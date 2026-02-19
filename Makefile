@@ -7,7 +7,7 @@ FLAKE8 = ./$(VENV)/bin/flake8
 
 PROGRAM_NAME = fly_in
 
-PACKAGES_TO_INSTALL = mypy flake8 pydantic
+PACKAGES_TO_INSTALL = mypy flake8 pydantic raylib
 
 PDB_COMMAND = $(PYTHON) -m pdb $(PROGRAM_NAME).py
 
@@ -18,7 +18,7 @@ MYPY_FLAGS = --warn-return-any --warn-unused-ignores --ignore-missing-imports \
 
 LINT_COMMAND = $(FLAKE8) . --exclude $(VENV) & $(MYPY) . $(MYPY_FLAGS) --exclude $(VENV)
 
-CREATE_VENV = virtualenv $(VENV)
+CREATE_VENV = python3 -m venv $(VENV)
 
 INSTALL_DEPS = $(PIP) install $(PACKAGES_TO_INSTALL)
 
