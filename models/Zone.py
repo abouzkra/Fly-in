@@ -25,11 +25,6 @@ class Zone(BaseModel):
                     "Zone name must not include dashes or spaces"
                     )
 
-        if self.x < 0 or self.y < 0:
-            raise ValueError(
-                    "Zone coordinates must be greater or equal to 0"
-                    )
-
         if self.max_drones <= 0:
             raise ValueError(
                     "max_drones value must be a positive integer"

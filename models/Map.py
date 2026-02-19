@@ -9,7 +9,7 @@ class Map:
         self.start_zone: str | None = None
         self.end_zone: str | None = None
         self.zones: dict[str, Zone] = {}
-        self.connections: set[tuple[str, str]] = set()
+        self.connections: list[tuple[str, str]] = list()
 
     def parse_file(self, input_file: str) -> None:
         with open(input_file, 'r') as file:
@@ -33,9 +33,9 @@ class Map:
                     self._parse_connection(line, line_nb)
                 else:
                     raise ParsingError(
-                            line_nb,
-                            f"Invalid line format: \"{line}\""
-                            )
+                        line_nb,
+                        f"Invalid line format: \"{line}\""
+                        )
 
             print(self.nb_drones)
             print(self.start_zone)
@@ -79,7 +79,10 @@ class Map:
 
         _, name, x, y = tokens
 
-        metadata = self._parse_metadata(metadata, line_nb, 'zone')
+        metadata = self._parse_metadata(
+                metadata, line_nb,
+                {'zone', 'color', 'max_drones'}
+                )
 
         if name in self.zones:
             raise ParsingError(line_nb, f"Duplicate zone name: '{name}'")
@@ -120,13 +123,66 @@ class Map:
             self.end_zone = name
 
     def _parse_connection(self, line: str, line_nb: int):
-        pass
+        if not line.startswith("connection:"):
+            raise ParsingError(
+                line_nb,
+                "Invalid connection definition, syntax:\n"
+                "\t\"connection: <zone1>-<zone2> [metadata]\""
+                )
+
+        raw_md = ""
+        if "[" in line:
+            line, raw_md = line.split('[', 1)
+            raw_md = "[" + raw_md
+
+        line = line[len("connection:"):].strip()
+
+        zone1, zone2 = line.split('-', 1)
+        if not zone1 or not zone2:
+            raise ParsingError(
+                line_nb,
+                "Invalid connection format (missing zone name)"
+                )
+
+        if zone1 not in self.zones:
+            raise ParsingError(
+                line_nb,
+                f"Undefined zone: '{zone1}'"
+                )
+        if zone2 not in self.zones:
+            raise ParsingError(
+                line_nb,
+                f"Undefined zone: '{zone2}'"
+                )
+
+        edge = tuple(sorted((zone1, zone2)))
+
+        if edge in self.connections:
+            raise ParsingError(
+                line_nb,
+                f"Duplicate connection: '{zone1}-{zone2}'"
+                )
+
+        self.connections.append(edge)
+
+        metadata = {}
+        if raw_md:
+            metadata = self._parse_metadata(raw_md, line_nb, {'max_link_capacity'})
+        try:
+            cap = int(metadata.get('max_link_capacity', 1))
+            if cap <= 0:
+                raise ValueError
+        except ValueError:
+            raise ParsingError(
+                line_nb,
+                "max_link_capacity must be a positive integer"
+                )
 
     def _parse_metadata(
             self,
             raw_md: str,
             line_nb: int,
-            md_type: str
+            md_keys: set[str]
             ) -> dict[str, Any]:
         raw_md = raw_md.strip()
 
@@ -154,24 +210,11 @@ class Map:
 
             metadata[k] = v
 
-        if(
-            md_type == 'zone'
-            and not set(metadata.keys()).issubset(
-                {'zone', 'color', 'max_drones'}
-                )
-            ):
+        if not set(metadata.keys()).issubset(md_keys):
             raise ParsingError(
                     line_nb,
-                    "Metadata block contains invalid key-value pairs"
-                    )
-
-        if(
-            md_type == 'conn'
-            and not set(metadata.keys()).issubset({'max_link_capacity'})
-            ):
-            raise ParsingError(
-                    line_nb,
-                    "Metadata block contains invalid key-value pairs"
+                    "Metadata block contains invalid key-value pairs\n" +
+                    f"Valid keys: {md_keys}"
                     )
         
         return metadata
@@ -180,4 +223,4 @@ class Map:
 if __name__ == "__main__":
     m = Map()
 
-    m.parse_file("maps/easy/01_linear_path.txt")
+    m.parse_file("maps/challenger/01_the_impossible_dream.txt")
