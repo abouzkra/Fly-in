@@ -1,6 +1,6 @@
 from typing import Any
 from .Error import ParsingError
-from .Zone import Zone, ZoneType
+from .Zone import Zone, ZoneType, Neighbor
 
 
 class Map:
@@ -36,12 +36,9 @@ class Map:
                         line_nb,
                         f"Invalid line format: \"{line}\""
                         )
+                
+            # self._display_parsing_results()
 
-            print(self.nb_drones)
-            print(self.start_zone)
-            print(self.end_zone)
-            print(self.zones)
-            print(self.connections)
 
     def _parse_nb_drones(self, line: str, line_nb: int) -> None:
         if line.startswith('nb_drones:'):
@@ -52,7 +49,8 @@ class Map:
         else:
             raise ParsingError(
                 line_nb,
-                "Input file must start with: \"nb_drones': <positive_integer>\""
+                "Input file must start with: " +
+                "\"nb_drones': <positive_integer>\""
                 )
 
         if self.nb_drones <= 0:
@@ -60,7 +58,6 @@ class Map:
                 line_nb,
                 "nb_drones must be a positive integer"
                 )
-
 
     def _parse_zone(self, line: str, line_nb: int, zone_kind: str):
         metadata = ""
@@ -167,7 +164,9 @@ class Map:
 
         metadata = {}
         if raw_md:
-            metadata = self._parse_metadata(raw_md, line_nb, {'max_link_capacity'})
+            metadata = self._parse_metadata(
+                    raw_md, line_nb, {'max_link_capacity'}
+                    )
         try:
             cap = int(metadata.get('max_link_capacity', 1))
             if cap <= 0:
@@ -176,6 +175,13 @@ class Map:
             raise ParsingError(
                 line_nb,
                 "max_link_capacity must be a positive integer"
+                )
+
+        self.zones[zone1].neighbors.append(
+                Neighbor(name=zone2, link_capacity=cap)
+                )
+        self.zones[zone2].neighbors.append(
+                Neighbor(name=zone1, link_capacity=cap)
                 )
 
     def _parse_metadata(
@@ -216,11 +222,23 @@ class Map:
                     "Metadata block contains invalid key-value pairs\n" +
                     f"Valid keys: {md_keys}"
                     )
-        
+
         return metadata
 
+    def _display_parsing_results(self) -> None:
+        print(f"nb_drones: {self.nb_drones}")
+        print("\n========================== Zones ==========================")
 
-if __name__ == "__main__":
-    m = Map()
+        for k, v in self.zones.items():
+            print(f"{k}: {v.x, v.y} - neighbors={v.neighbors} - type={v.zone_type} - max_drones={v.max_drones}")
 
-    m.parse_file("maps/challenger/01_the_impossible_dream.txt")
+        print("\n========================== Connections ==========================")
+        for c in self.connections:
+            print(c)
+
+
+# if __name__ == "__main__":
+#     m = Map()
+#
+#     m.parse_file("maps/challenger/01_the_impossible_dream.txt")
+#     m.parse_file("maps/easy/01_linear_path.txt")

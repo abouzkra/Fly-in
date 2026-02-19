@@ -10,12 +10,19 @@ class ZoneType(Enum):
     PRIORITY = 'priority'
 
 
+class Neighbor(BaseModel):
+    name: str = Field(min_length=1)
+    cost: int = Field(default=1, gt=0)
+    link_capacity: int = Field(default=1, gt=0)
+
+
 class Zone(BaseModel):
     name: str = Field(min_length=1)
     x: int
     y: int
+    neighbors: list[Neighbor] = []
     zone_type: ZoneType = Field(default=ZoneType.NORMAL)
-    max_drones: int = Field(default=1)
+    max_drones: int = Field(default=1, gt=0)
     color: Optional[str] = None
 
     @model_validator(mode='after')
@@ -23,11 +30,6 @@ class Zone(BaseModel):
         if " " in self.name or "-" in self.name:
             raise ValueError(
                     "Zone name must not include dashes or spaces"
-                    )
-
-        if self.max_drones <= 0:
-            raise ValueError(
-                    "max_drones value must be a positive integer"
                     )
 
         return self
