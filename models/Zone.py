@@ -12,7 +12,7 @@ class ZoneType(Enum):
 
 class Neighbor(BaseModel):
     name: str = Field(min_length=1)
-    cost: int = Field(default=1, gt=0)
+    cost: float = Field(default=float('inf'), gt=0)
     link_capacity: int = Field(default=1, gt=0)
 
 
@@ -20,7 +20,7 @@ class Zone(BaseModel):
     name: str = Field(min_length=1)
     x: int
     y: int
-    neighbors: list[Neighbor] = []
+    neighbors: list[Neighbor] = Field(default_factory=list)
     zone_type: ZoneType = Field(default=ZoneType.NORMAL)
     max_drones: int = Field(default=1, gt=0)
     color: Optional[str] = None

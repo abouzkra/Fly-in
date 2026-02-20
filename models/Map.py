@@ -5,7 +5,7 @@ from .Zone import Zone, ZoneType, Neighbor
 
 class Map:
     def __init__(self):
-        self.nb_drones: int = 0
+        self.nb_drones: int | None = None
         self.start_zone: str | None = None
         self.end_zone: str | None = None
         self.zones: dict[str, Zone] = {}
@@ -19,7 +19,7 @@ class Map:
                 if not line or line.startswith('#'):
                     continue
 
-                if not self.nb_drones:
+                if self.nb_drones is None:
                     self._parse_nb_drones(line, line_nb)
                     continue
 
@@ -36,14 +36,17 @@ class Map:
                         line_nb,
                         f"Invalid line format: \"{line}\""
                         )
-                
-            # self._display_parsing_results()
+
+            if self.start_zone is None:
+                raise ParsingError(-1, "Missing start_hub definition")
+            if self.end_zone is None:
+                raise ParsingError(-1, "Missing end_hub definition")
 
 
     def _parse_nb_drones(self, line: str, line_nb: int) -> None:
         if line.startswith('nb_drones:'):
             try:
-                self.nb_drones = int(line.split(':')[1].strip())
+                self.nb_drones = int(line.split(':', 1)[1].strip())
             except Exception as e:
                 raise ParsingError(line_nb, str(e))
         else:
@@ -101,7 +104,13 @@ class Map:
         except Exception as e:
             raise ParsingError(line_nb, str(e))
 
-        self.zones[name] = zone
+        if (zone.x, zone.y) in [(z.x, z.y) for z in self.zones.values()]:
+            raise ParsingError(
+                line_nb,
+                "Zones with duplicate coordinates were found" + 
+                f"{(zone.x, zone.y)}" +
+                f"{[(z.x, z.y) for z in self.zones.values()]}"
+                )
 
         if zone_kind == 'start':
             if self.start_zone:
@@ -119,8 +128,10 @@ class Map:
                     )
             self.end_zone = name
 
+        self.zones[name] = zone
+
     def _parse_connection(self, line: str, line_nb: int):
-        if not line.startswith("connection:"):
+        if not line.startswith("connection:") or '-' not in line:
             raise ParsingError(
                 line_nb,
                 "Invalid connection definition, syntax:\n"
@@ -139,6 +150,12 @@ class Map:
             raise ParsingError(
                 line_nb,
                 "Invalid connection format (missing zone name)"
+                )
+
+        if zone1 == zone2:
+            raise ParsingError(
+                line_nb,
+                "Connection names are the same"
                 )
 
         if zone1 not in self.zones:
@@ -206,14 +223,13 @@ class Map:
         metadata = {}
 
         for pair in raw_md.split():
-            k, v = pair.split('=', 1)
-
-            if '=' not in pair or not v:
+            if '=' not in pair:
                 raise ParsingError(
                     line_nb,
                     f"Invalid metadata entry: '{pair}'"
                     )
 
+            k, v = pair.split('=', 1)
             metadata[k] = v
 
         if not set(metadata.keys()).issubset(md_keys):
@@ -237,8 +253,8 @@ class Map:
             print(c)
 
 
-# if __name__ == "__main__":
-#     m = Map()
-#
-#     m.parse_file("maps/challenger/01_the_impossible_dream.txt")
-#     m.parse_file("maps/easy/01_linear_path.txt")
+if __name__ == "__main__":
+    m = Map()
+
+    # m.parse_file("maps/challenger/01_the_impossible_dream.txt")
+    m.parse_file("maps/easy/01_linear_path.txt")
