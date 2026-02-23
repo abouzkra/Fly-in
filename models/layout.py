@@ -138,20 +138,19 @@ class MapLayout:
             dx = zone2.center_x - zone1.center_x
             dy = zone2.center_y - zone1.center_y
 
-            if dx == 0:
-                start_x = zone1.center_x
-                start_y = zone1.center_y + zone1.radius
-                end_x = zone2.center_x
-                end_y = zone2.center_y - zone2.radius
-            else:
-                m = (dy) / (dx)
-                b = zone1.center_y - m * zone1.center_x
-                y = lambda x: m * x + b
+            length = sqrt(dx ** 2 + dy ** 2)
 
-                start_x = zone1.center_x + zone1.radius / (sqrt(1 + m ** 2))
-                start_y = y(start_x)
-                end_x = zone2.center_x - zone2.radius / (sqrt(1 + m ** 2))
-                end_y = y(end_x)
+            if length == 0:
+                continue
+
+            # Vector normalization
+            norm_dx = dx / length
+            norm_dy = dy / length
+
+            start_x = zone1.center_x + norm_dx * zone1.radius
+            start_y = zone1.center_y + norm_dy * zone1.radius
+            end_x = zone2.center_x - norm_dx * zone2.radius
+            end_y = zone2.center_y - norm_dy * zone2.radius
 
             self.connections_layouts[(name1, name2)] = ConnectionLayout(
                     int(start_x), int(start_y),
