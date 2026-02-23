@@ -1,30 +1,70 @@
+from math import sqrt, ceil
 from pyray import *
-from raylib import LOG_NONE, GetMousePosition, SetTargetFPS, SetTraceLogLevel
+from raylib import LOG_NONE, SetTargetFPS, SetTraceLogLevel
 
 
-SetTraceLogLevel(LOG_NONE)
+# Zone drawing
+if __name__ == "__main__":
+    SetTraceLogLevel(LOG_NONE)
 
-init_window(800, 450, "Hello")
-drone_texture = load_texture_from_image(load_image("./images/camera-drone-med.png"))
-drone_x = 400
+    init_window(800, 450, "Hello")
+    drone_texture = load_texture("./images/drone-small.png")
 
-SetTargetFPS(60)
+    SetTargetFPS(60)
+    while not window_should_close():
 
-while not window_should_close():
+        begin_drawing()
 
-    if drone_x < 600:
-        drone_x += 1
-    else:
-        drone_x = 400
+        clear_background(RAYWHITE)
+        end_drawing()
 
-    begin_drawing()
+    unload_texture(drone_texture)
+    close_window()
 
-    draw_texture(drone_texture, drone_x, 200, BLACK)
 
-    clear_background(RAYWHITE)
-    draw_text("Hello world", 190, 200, 20, VIOLET)
-    draw_circle_lines(100, 100, 30, MAGENTA)
-    end_drawing()
+# Drone drawing
+# if __name__ == "__main__":
+#     SetTraceLogLevel(LOG_NONE)
+#
+#     init_window(800, 450, "Hello")
+#     max_drones = 8
+#     drone_texture = load_texture("./images/drone-small.png")
+#
+#     cols = rows = ceil(sqrt(max_drones))
+#
+#     padding = 8
+#     grid_x, grid_y = 100, 100
+#     grid_w = (drone_texture.width + padding) * cols - padding
+#     grid_h = (drone_texture.height + padding) * rows - padding
+#
+#     SetTargetFPS(60)
+#     while not window_should_close():
+#
+#         begin_drawing()
+#         draw_circle(
+#             (grid_x + grid_w // 2),
+#             (grid_y + grid_h // 2),
+#             sqrt((grid_w ** 2 + grid_h ** 2)) // 2 + padding,
+#             LIGHTGRAY
+#             )
+#
+#         # draw_rectangle_lines(grid_x, grid_y, grid_w, grid_h, BLUE)
+#
+#         count = 0
+#         for row in range(rows):
+#             for col in range(cols):
+#                 if count >= max_drones:
+#                     break
+#                 draw_texture(
+#                     drone_texture,
+#                     grid_x + col * (drone_texture.width + padding),
+#                     grid_y + row * (drone_texture.height + padding),
+#                     WHITE
+#                     )
+#                 count += 1
+#
+#         clear_background(RAYWHITE)
+#         end_drawing()
+#
+#     unload_texture(drone_texture)
 
-unload_texture(drone_texture)
-close_window()

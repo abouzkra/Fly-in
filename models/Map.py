@@ -2,6 +2,8 @@ from typing import Any
 from .Error import ParsingError
 from .Zone import Zone, ZoneType, Neighbor
 
+# TODO: Add zone coordinate validation (check zone coordinates after normalization against zone range)
+# TODO: Check duplicate key-value pairs in metadata
 
 class Map:
     def __init__(self):
@@ -230,6 +232,12 @@ class Map:
                     )
 
             k, v = pair.split('=', 1)
+
+            if '=' in v:
+                raise ParsingError(
+                    line_nb,
+                    f"Invalid metadata entry: '{pair}'"
+                    )
             metadata[k] = v
 
         if not set(metadata.keys()).issubset(md_keys):
@@ -241,20 +249,14 @@ class Map:
 
         return metadata
 
-    def _display_parsing_results(self) -> None:
-        print(f"nb_drones: {self.nb_drones}")
-        print("\n========================== Zones ==========================")
+    def get_map_bounds(self) -> tuple[int, int, int, int]:
+        if not self.zones:
+            raise ValueError("No zones defined")
 
-        for k, v in self.zones.items():
-            print(f"{k}: {v.x, v.y} - neighbors={v.neighbors} - type={v.zone_type} - max_drones={v.max_drones}")
+        xs = [zone.x for zone in self.zones.values()]
+        ys = [zone.y for zone in self.zones.values()]
 
-        print("\n========================== Connections ==========================")
-        for c in self.connections:
-            print(c)
-
-
-if __name__ == "__main__":
-    m = Map()
-
-    # m.parse_file("maps/challenger/01_the_impossible_dream.txt")
-    m.parse_file("maps/easy/01_linear_path.txt")
+        return (
+            min(xs), max(xs),
+            min(ys), max(ys),
+            )
