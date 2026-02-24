@@ -15,15 +15,10 @@ class MapRenderer:
         for name, zone_layout in self.layout.zone_layouts.items():
             self._draw_zone(name, zone_layout)
 
+    def animate_turns(self, turns: list[list[tuple[int, str]]]) -> None:
+        pass
+
     def _draw_zone(self, name: str, zone_layout: ZoneLayout) -> None:
-        # container = zone_layout.container
-        # draw_rectangle_lines(
-        #         int(container.x),
-        #         int(container.y),
-        #         int(container.w),
-        #         int(container.h),
-        #         RED
-        #         )
         draw_circle(
                 zone_layout.center_x,
                 zone_layout.center_y,

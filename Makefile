@@ -8,7 +8,7 @@ FLAKE8 = ./$(VENV)/bin/flake8
 PROGRAM_NAME = main
 MAP_EASY = maps/easy/01_linear_path.txt
 MAP_MED = maps/medium/03_priority_puzzle.txt
-MAP_HARD = maps/hard/03_ultimate_challenge.txt
+MAP_HARD = maps/hard/02_capacity_hell.txt
 CHALLENGER = maps/challenger/01_the_impossible_dream.txt
 
 PACKAGES_TO_INSTALL = mypy flake8 pydantic raylib

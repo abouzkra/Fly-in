@@ -1,6 +1,6 @@
-from .Zone import Zone, ZoneType, Neighbor
-from .Map import Map
-from .Error import ParsingError
+from .zone import Zone, ZoneType, Neighbor
+from .map import Map
+from .error import ParsingError
 from .layout import MapLayout, ZoneLayout, Rect
 # from .renderer import MapRenderer
 

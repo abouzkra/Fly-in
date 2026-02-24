@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from math import ceil, sqrt
-from .Map import Map
+from .map import Map
 
 
 @dataclass
@@ -12,7 +12,7 @@ class Rect:
 
 
 class LayoutConfig:
-    zone_x_padding: int = 100
+    zone_x_padding: int = 20
     zone_y_padding: int = 50
     drone_padding: int = 5
 

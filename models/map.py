@@ -1,6 +1,6 @@
 from typing import Any
-from .Error import ParsingError
-from .Zone import Zone, ZoneType, Neighbor
+from .error import ParsingError
+from .zone import Zone, ZoneType, Neighbor
 
 # TODO: Add zone coordinate validation (check zone coordinates after normalization against zone range)
 # TODO: Check duplicate key-value pairs in metadata
@@ -120,6 +120,7 @@ class Map:
                     line_nb,
                     "Found multiple start_hub definitions"
                     )
+            zone.max_drones = self.nb_drones
             self.start_zone = name
 
         if zone_kind == 'end':

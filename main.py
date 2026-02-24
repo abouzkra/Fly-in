@@ -1,8 +1,9 @@
 import sys
 from pyray import *
-from raylib import LOG_NONE, GetMonitorHeight, GetMonitorWidth, GetScreenHeight, GetScreenWidth, SetTargetFPS, SetTraceLogLevel
+from raylib import LOG_NONE, GetMonitorHeight, GetMonitorWidth, SetTargetFPS, SetTraceLogLevel
 from models import Map, MapLayout, ParsingError
 from models.renderer import MapRenderer
+from models.solver import Solver
 
 
 def launch_visualizer(
@@ -12,9 +13,8 @@ def launch_visualizer(
         ) -> None:
     close_window()
     init_window(win_w, win_h, "Fly-in")
-    SetTraceLogLevel(LOG_NONE)
 
-    drone_texture = load_texture("./images/drone-l.png")
+    drone_texture = load_texture("./images/drone-s.png")
     renderer = MapRenderer(map_layout, drone_texture)
 
     SetTargetFPS(60)
@@ -30,7 +30,6 @@ def launch_visualizer(
     close_window()
 
 
-
 def main() -> None:
     if len(sys.argv) != 2:
         print("Usage: python3 main.py <map_file>")
@@ -44,14 +43,20 @@ def main() -> None:
         
         m.parse_file(file)
 
+        s = Solver(m)
+        turns = s.solve()
+        print(len(turns))
+
+        # for i, mv in enumerate(turns, start=1):
+        #     print(f"{i}: {mv}")
     except ParsingError as e:
         print(e)
         sys.exit(1)
 
-    init_window(200, 200, "loading")
     SetTraceLogLevel(LOG_NONE)
+    init_window(200, 200, "loading")
 
-    drone_texture = load_texture("./images/drone-l.png")
+    drone_texture = load_texture("./images/drone-s.png")
     map_layout = MapLayout(m, drone_texture.width)
     win_w = int(max(
         layout.container.x + layout.container.w
