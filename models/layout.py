@@ -25,7 +25,7 @@ class ZoneLayout:
     center_x: int
     center_y: int
     radius: float
-    drone_coords: list[tuple[int, int]]
+    drone_coords: dict[tuple[int, int], bool]
 
 
 @dataclass
@@ -109,16 +109,15 @@ class MapLayout:
             grid_x = container.x + (container.w - grid_w) // 2
             grid_y = container.y + (container.h - grid_h) // 2
 
-            drone_coords: list[tuple[int, int]] = []
+            drone_coords: dict[tuple[int, int], bool] = {}
             count = 0
             for r in range(rows):
                 for c in range(cols):
                     if count >= zone.max_drones:
                         break
-                    drone_coords.append((
-                        int(grid_x + c * (self.cell_size + LayoutConfig.drone_padding)),
-                        int(grid_y + r * (self.cell_size + LayoutConfig.drone_padding))
-                        ))
+                    x = int(grid_x + c * (self.cell_size + LayoutConfig.drone_padding))
+                    y = int(grid_y + r * (self.cell_size + LayoutConfig.drone_padding))
+                    drone_coords[(x, y)] = False
                     count += 1
 
             self.zone_layouts[name] = ZoneLayout(

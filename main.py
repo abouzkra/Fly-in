@@ -14,7 +14,7 @@ def launch_visualizer(
     close_window()
     init_window(win_w, win_h, "Fly-in")
 
-    drone_texture = load_texture("./images/drone-s.png")
+    drone_texture = load_texture("./images/drone-l.png")
     renderer = MapRenderer(map_layout, drone_texture)
 
     SetTargetFPS(60)
@@ -43,12 +43,8 @@ def main() -> None:
         
         m.parse_file(file)
 
-        s = Solver(m)
-        turns = s.solve()
-        print(len(turns))
-
-        # for i, mv in enumerate(turns, start=1):
-        #     print(f"{i}: {mv}")
+        # s = Solver(m)
+        # turns = s.solve()
     except ParsingError as e:
         print(e)
         sys.exit(1)
@@ -56,7 +52,7 @@ def main() -> None:
     SetTraceLogLevel(LOG_NONE)
     init_window(200, 200, "loading")
 
-    drone_texture = load_texture("./images/drone-s.png")
+    drone_texture = load_texture("./images/drone-l.png")
     map_layout = MapLayout(m, drone_texture.width)
     win_w = int(max(
         layout.container.x + layout.container.w

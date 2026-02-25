@@ -172,9 +172,9 @@ class Map:
                 f"Undefined zone: '{zone2}'"
                 )
 
-        edge = tuple(sorted((zone1, zone2)))
+        edge = (zone1, zone2)
 
-        if edge in self.connections:
+        if sorted(edge) in [sorted(e) for e in self.connections]:
             raise ParsingError(
                 line_nb,
                 f"Duplicate connection: '{zone1}-{zone2}'"
