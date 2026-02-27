@@ -129,6 +129,7 @@ class Map:
                     line_nb,
                     "Found multiple end_hub definitions"
                     )
+            zone.max_drones = self.nb_drones
             self.end_zone = name
 
         self.zones[name] = zone

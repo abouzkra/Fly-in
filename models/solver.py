@@ -2,9 +2,7 @@ from typing import List, Dict, Tuple
 import heapq
 from models import ZoneType
 
-# -------------------------------------------------------
-# Edge & Node for InternalGraph
-# -------------------------------------------------------
+
 class Edge:
     def __init__(self, to: str, cost: float, capacity: int):
         self.to = to
@@ -17,9 +15,7 @@ class Node:
         self.name = name
         self.edges: List[Edge] = []
 
-# -------------------------------------------------------
-# InternalGraph (builds itself from Map)
-# -------------------------------------------------------
+
 class InternalGraph:
     PRIORITY_BONUS = -0.01
 
@@ -67,9 +63,7 @@ class InternalGraph:
             return 1 + self.PRIORITY_BONUS
         return 1
 
-# -------------------------------------------------------
-# SuurballeEngine
-# -------------------------------------------------------
+
 class SuurballeEngine:
     def __init__(self, graph: InternalGraph, start_zone: str, end_zone: str):
         self.graph = graph
@@ -151,9 +145,7 @@ class SuurballeEngine:
                 final_path.append(z)
         return final_path
 
-# -------------------------------------------------------
-# PathDistributor
-# -------------------------------------------------------
+
 class PathDistributor:
     def __init__(self, paths: List[List[str]], nb_drones: int):
         self.paths = sorted(paths, key=len)
@@ -170,9 +162,7 @@ class PathDistributor:
 
         return assignment
 
-# -------------------------------------------------------
-# TurnSimulator
-# -------------------------------------------------------
+
 class Drone:
     def __init__(self, id_: int, path: List[str]):
         self.id = id_
@@ -214,9 +204,7 @@ class TurnSimulator:
 
         return turns
 
-# -------------------------------------------------------
-# Solver
-# -------------------------------------------------------
+
 class Solver:
     def __init__(self, map_):
         self.map = map_
@@ -226,16 +214,13 @@ class Solver:
         self.turns: list[list[tuple[int, str]]] = []
 
     def solve(self) -> list[list[tuple[int, str]]]:
-        # 1. Find disjoint paths
         suurballe = SuurballeEngine(self.graph, self.map.start_zone, self.map.end_zone)
         self.paths = suurballe.find_all_disjoint_paths()
         print(self.paths)
 
-        # 2. Assign drones to paths
         distributor = PathDistributor(self.paths, self.map.nb_drones)
         self.drone_paths = distributor.assign()
 
-        # 3. Simulate turn-by-turn movements
         simulator = TurnSimulator(self.map, self.drone_paths)
         self.turns = simulator.run()
 

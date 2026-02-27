@@ -33,7 +33,7 @@ install:
 	@echo "Dependencies installed successfully."
 
 run:
-	@$(PYTHON) $(PROGRAM_NAME).py $(MAP_HARD)
+	@$(PYTHON) $(PROGRAM_NAME).py $(CHALLENGER)
 
 debug:
 	@$(PDB_COMMAND)

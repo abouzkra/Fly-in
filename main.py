@@ -9,13 +9,15 @@ from models.solver import Solver
 def launch_visualizer(
         win_w: int,
         win_h: int,
-        map_layout: MapLayout
+        map_layout: MapLayout,
+        turns
         ) -> None:
     close_window()
     init_window(win_w, win_h, "Fly-in")
 
-    drone_texture = load_texture("./images/drone-l.png")
+    drone_texture = load_texture("./images/drone-s.png")
     renderer = MapRenderer(map_layout, drone_texture)
+    renderer.load_turns(turns)
 
     SetTargetFPS(60)
     while not window_should_close():
@@ -43,8 +45,8 @@ def main() -> None:
         
         m.parse_file(file)
 
-        # s = Solver(m)
-        # turns = s.solve()
+        s = Solver(m)
+        turns = s.solve()
     except ParsingError as e:
         print(e)
         sys.exit(1)
@@ -52,7 +54,7 @@ def main() -> None:
     SetTraceLogLevel(LOG_NONE)
     init_window(200, 200, "loading")
 
-    drone_texture = load_texture("./images/drone-l.png")
+    drone_texture = load_texture("./images/drone-s.png")
     map_layout = MapLayout(m, drone_texture.width)
     win_w = int(max(
         layout.container.x + layout.container.w
@@ -69,7 +71,7 @@ def main() -> None:
         print("Simulation output will be provided")
     else:
         # try:
-        launch_visualizer(win_w, win_h, map_layout)
+        launch_visualizer(win_w, win_h, map_layout, turns)
         # except Exception as e:
         #     print(f"Visualiser Error: {e}")
         #     sys.exit(1)
