@@ -2,7 +2,7 @@ from .zone import Zone, ZoneType, Neighbor
 from .map import Map
 from .error import ParsingError
 from .layout import MapLayout, ZoneLayout, Rect
-# from .renderer import MapRenderer
+from .renderer import MapRenderer
 
 
 __all__ = [
@@ -13,5 +13,6 @@ __all__ = [
         'ParsingError',
         'MapLayout',
         'ZoneLayout',
-        'Rect'
+        'Rect',
+        'MapRenderer'
         ]

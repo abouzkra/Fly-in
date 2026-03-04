@@ -79,7 +79,6 @@ class MapLayout:
 
             col_widths[col] = max(col_widths.get(col, 0), w)
             row_heights[row] = max(row_heights.get(row, 0), h)
-            # container_sizes[name] = (col_widths[col], row_heights[row], r)
 
         col_offsets = {}
         row_offsets = {}

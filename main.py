@@ -1,8 +1,7 @@
 import sys
 from pyray import *
 from raylib import LOG_NONE, GetMonitorHeight, GetMonitorWidth, SetTargetFPS, SetTraceLogLevel
-from models import Map, MapLayout, ParsingError
-from models.renderer import MapRenderer
+from models import Map, MapLayout, ParsingError, MapRenderer
 from models.solver import Solver
 
 
@@ -12,7 +11,6 @@ def launch_visualizer(
         map_layout: MapLayout,
         turns
         ) -> None:
-    close_window()
     init_window(win_w, win_h, "Fly-in")
 
     drone_texture = load_texture("./images/drone-s.png")
@@ -44,9 +42,6 @@ def main() -> None:
         m = Map()
         
         m.parse_file(file)
-
-        s = Solver(m)
-        turns = s.solve()
     except ParsingError as e:
         print(e)
         sys.exit(1)
@@ -65,13 +60,16 @@ def main() -> None:
         for layout in map_layout.zone_layouts.values()
         ))
 
-
     if win_w > GetMonitorWidth(0) or win_h > GetMonitorHeight(0):
         print("Warning: Map is too big for window!")
         print("Simulation output will be provided")
-    else:
+    # else:
         # try:
-        launch_visualizer(win_w, win_h, map_layout, turns)
+    s = Solver(m)
+    turns = s.solve()
+    print(len(turns))
+    close_window()
+    launch_visualizer(win_w, win_h, map_layout, turns) 
         # except Exception as e:
         #     print(f"Visualiser Error: {e}")
         #     sys.exit(1)

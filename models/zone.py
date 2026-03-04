@@ -12,7 +12,7 @@ class ZoneType(Enum):
 
 class Neighbor(BaseModel):
     name: str = Field(min_length=1)
-    cost: float = Field(default=float('inf'), gt=0)
+    cost: float = Field(default=1.0, gt=0)
     link_capacity: int = Field(default=1, gt=0)
 
 

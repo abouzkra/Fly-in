@@ -1,35 +1,44 @@
 from math import sqrt
 from pyray import *
+from .layout import ConnectionLayout, MapLayout
 
 
 class RenderDrone:
-    SPEED = 200.0
+    SPEED: float = 300.0
 
-    def __init__(self, drone_id: int, zone: str, slot_key, x: int, y: int):
-        self.id = drone_id
-        self.zone = zone
+    def __init__(
+            self,
+            drone_id: int,
+            start_zone: str,
+            x: int, y: int
+            ) -> None:
+        self.id: int = drone_id
+        self.from_zone: str = start_zone
 
-        self.current_slot = slot_key
-        self.target_slot = None
+        self.connection: ConnectionLayout | None = None
 
-        self.x = float(x)
-        self.y = float(y)
+        self.current_slot: tuple[int, int] = (x, y)
+        self.target_slot: tuple[int, int] = (x, y)
 
-        self.is_moving = False
-        self.phase = 0
+        self.x: float = float(x)
+        self.y: float = float(y)
 
-        self.connection = None
-        self.texture = None
+        self.is_moving: bool = False
+        self.phase: int = 0
 
-        self.start_x = 0.0
-        self.start_y = 0.0
-        self.end_x = 0.0
-        self.end_y = 0.0
+        self.start_x: float = 0.0
+        self.start_y: float = 0.0
+        self.end_x: float = 0.0
+        self.end_y: float = 0.0
 
-    def start_turn(self, connection, target_slot_key, target_slot_pos, texture):
+    def start_move(
+            self,
+            connection: ConnectionLayout,
+            target_slot: tuple[int, int],
+            tex_half_w: int, tex_half_h: int
+            ) -> None:
         self.connection = connection
-        self.target_slot = target_slot_key
-        self.texture = texture
+        self.target_slot = target_slot
 
         self.phase = 0
         self.is_moving = True
@@ -37,50 +46,43 @@ class RenderDrone:
         self.start_x = self.x
         self.start_y = self.y
 
-        self.end_x = connection.start_x - texture.width // 2
-        self.end_y = connection.start_y - texture.height // 2
+        self.end_x = connection.start_x - tex_half_w
+        self.end_y = connection.start_y - tex_half_h
 
-    def update(self):
-        if not self.is_moving:
-            return
-
-        finished = self._move_step()
-
-        if not finished:
+    def update(self, tex_half_w: int, tex_half_h: int) -> None:
+        if not self.is_moving or not self._move():
             return
 
         if self.phase == 0:
             self.phase = 1
             self.start_x = self.x
             self.start_y = self.y
-            self.end_x = self.connection.end_x - self.texture.width // 2
-            self.end_y = self.connection.end_y - self.texture.height // 2
-
+            self.end_x = self.connection.end_x - tex_half_w
+            self.end_y = self.connection.end_y - tex_half_h
         elif self.phase == 1:
             self.phase = 2
             self.start_x = self.x
             self.start_y = self.y
-            self.end_x, self.end_y = self.target_slot[1]
-
+            self.end_x, self.end_y = self.target_slot
         elif self.phase == 2:
-            self.is_moving = False
             self.phase = 3
+            self.is_moving = False
 
-    def _move_step(self) -> bool:
+    def _move(self) -> bool:
         dx = self.end_x - self.x
         dy = self.end_y - self.y
 
-        dist = sqrt(dx * dx + dy * dy)
-
-        if dist < 2:
-            self.x = self.end_x
+        dist = dx ** 2 + dy ** 2
+        step = 200 * get_frame_time()
+        
+        if dist < step * step:
+            self.x = self.end_x 
             self.y = self.end_y
             return True
 
+        dist = sqrt(dist)
         norm_dx = dx / dist
         norm_dy = dy / dist
-
-        step = self.SPEED * get_frame_time()
 
         self.x += norm_dx * step
         self.y += norm_dy * step
@@ -89,111 +91,121 @@ class RenderDrone:
 
 
 class MapRenderer:
-    def __init__(self, layout, drone_texture):
-        self.layout = layout
-        self.drone_texture = drone_texture
+    def __init__(self, layout: MapLayout, drone_texture: Texture):
+        self.layout: MapLayout = layout
+        self.drone_texture: Texture = drone_texture
+        self.tex_half_w: int = drone_texture.width // 2
+        self.tex_half_h: int = drone_texture.height // 2
 
         self.drones: dict[int, RenderDrone] = {}
 
-        self.turns = []
-        self.current_turn = 0
-        self.playing = False
+        self.turns: list[list[tuple[int, str]]] = []
+        self.current_turn: int = 0
+        self.playing: bool = False
 
         start_zone = layout.map.start_zone
         start_layout = layout.zone_layouts[start_zone]
-
         drone_id = 1
-        for slot_key, occupied in start_layout.drone_coords.items():
+        for key, occupied in start_layout.drone_coords.items():
             if not occupied:
-                start_layout.drone_coords[slot_key] = True
-
+                start_layout.drone_coords[key] = True
                 self.drones[drone_id] = RenderDrone(
-                    drone_id,
-                    start_zone,
-                    slot_key,
-                    slot_key[0],
-                    slot_key[1],
-                )
-
+                        drone_id,
+                        start_zone,
+                        key[0], key[1]
+                        )
                 drone_id += 1
 
-    def load_turns(self, turns):
+    def load_turns(self, turns: list[list[tuple[int, str]]]) -> None:
         self.turns = turns
-        self.current_turn = 0
         self.playing = True
 
-    def draw(self):
+    def draw(self) -> None:
         self._update()
 
-        for connection in self.layout.connections_layouts.values():
+        for connection_layout in self.layout.connections_layouts.values():
             draw_line_ex(
-                (connection.start_x, connection.start_y),
-                (connection.end_x, connection.end_y),
+                (connection_layout.start_x, connection_layout.start_y),
+                (connection_layout.end_x, connection_layout.end_y),
                 3.0,
-                BLACK,
-            )
+                BLACK
+                )
 
-        for zone_layout in self.layout.zone_layouts.values():
+        for _, zone_layout in self.layout.zone_layouts.items():
             draw_circle(
-                zone_layout.center_x,
-                zone_layout.center_y,
-                zone_layout.radius,
-                LIGHTGRAY,
-            )
+                    zone_layout.center_x,
+                    zone_layout.center_y,
+                    zone_layout.radius,
+                    WHITE
+                    )
+            draw_circle_lines(
+                    zone_layout.center_x,
+                    zone_layout.center_y,
+                    zone_layout.radius,
+                    LIGHTGRAY
+                    )
 
         for drone in self.drones.values():
+            text = str(drone.id)
+            font_size = 12
+            text_w = measure_text(text, font_size)
+
             draw_texture(
                 self.drone_texture,
-                int(drone.x),
-                int(drone.y),
-                WHITE,
-            )
-
-    def _update(self):
+                int(drone.x), int(drone.y),
+                BLACK
+                )
+            draw_text(
+                text,
+                int(drone.x + self.tex_half_w - text_w // 2),
+                int(drone.y + self.tex_half_h - font_size // 2),
+                font_size,
+                WHITE
+                )
+            
+    def _update(self) -> None:
         for drone in self.drones.values():
-            drone.update()
+            drone.update(self.tex_half_w, self.tex_half_h)
 
-        if self.playing and all(not d.is_moving for d in self.drones.values()):
+        turn_anim_ended = all(not d.is_moving for d in self.drones.values())
+        if self.playing and turn_anim_ended:
             if self.current_turn < len(self.turns):
-                print(self.turns[self.current_turn])
-                self._start_turn(self.turns[self.current_turn])
+                self._start_turn(self.current_turn)
                 self.current_turn += 1
             else:
                 self.playing = False
 
-    def _start_turn(self, turn):
-        for drone_id, next_zone in turn:
+    def _start_turn(self, turn_idx: int) -> None:
+        for drone_id, next_zone in self.turns[turn_idx]:
             drone = self.drones[drone_id]
-
             if drone.is_moving:
                 continue
 
-            from_zone = drone.zone
-            connection = self.layout.connections_layouts[(from_zone, next_zone)]
-
+            connection = self.layout.connections_layouts[
+                    (drone.from_zone, next_zone)
+                    ]
             target_layout = self.layout.zone_layouts[next_zone]
             free_slot = None
 
-            for slot_key, occupied in target_layout.drone_coords.items():
+            for slot, occupied in target_layout.drone_coords.items():
                 if not occupied:
-                    free_slot = slot_key
+                    free_slot = slot
                     break
 
-            if free_slot is None:
+            if not free_slot:
                 continue
 
             target_layout.drone_coords[free_slot] = True
-
-            self.layout.zone_layouts[from_zone].drone_coords[
+            self.layout.zone_layouts[drone.from_zone].drone_coords[
                 drone.current_slot
-            ] = False
+                ] = False
 
-            drone.start_turn(
+            drone.start_move(
                 connection,
-                (next_zone, free_slot),
                 free_slot,
-                self.drone_texture,
-            )
+                self.tex_half_w,
+                self.tex_half_h
+                )
 
-            drone.zone = next_zone
+            drone.from_zone = next_zone
             drone.current_slot = free_slot
