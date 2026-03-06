@@ -1,6 +1,6 @@
 import sys
 from pyray import *
-from raylib import LOG_NONE, GetMonitorHeight, GetMonitorWidth, SetTargetFPS, SetTraceLogLevel
+from raylib import LOG_NONE, TEXT_SIZE
 from models import Map, MapLayout, ParsingError, MapRenderer
 from models.solver import Solver
 
@@ -11,16 +11,19 @@ def launch_visualizer(
         turns
         ) -> None:
     init_window(win_w, win_h, "Fly-in")
+    gui_set_style(DEFAULT, TEXT_SIZE, 20)
 
     drone_texture = load_texture("./images/drone-s.png")
     renderer = MapRenderer(map_layout, drone_texture)
     renderer.load_turns(turns)
 
-    SetTargetFPS(60)
+    set_target_fps(60)
     while not window_should_close():
         begin_drawing()
 
-        renderer.draw()
+        renderer.handle_click()
+        renderer.draw_map()
+        renderer.draw_panel()
 
         clear_background(RAYWHITE)
         end_drawing()
@@ -39,35 +42,37 @@ def main() -> None:
     m = None
     try:
         m = Map()
-        
         m.parse_file(file)
     except ParsingError as e:
         print(e)
         sys.exit(1)
 
-    SetTraceLogLevel(LOG_NONE)
+    set_trace_log_level(LOG_NONE)
     init_window(200, 200, "loading")
 
     drone_texture = load_texture("./images/drone-s.png")
     map_layout = MapLayout(m, drone_texture.width)
-    win_w = int(max(
-        layout.container.x + layout.container.w
-        for layout in map_layout.zone_layouts.values()
-        ))
+    win_w = max(
+        int(max(
+            layout.container.x + layout.container.width
+            for layout in map_layout.zone_layouts.values()
+            )),
+        int(map_layout.panel_layout.container.width)
+        )
     win_h = int(max(
-        layout.container.y + layout.container.h
+        layout.container.y + layout.container.height
         for layout in map_layout.zone_layouts.values()
-        ))
+        )) + int(map_layout.panel_layout.container.height)
 
-    if win_w > GetMonitorWidth(0) or win_h > GetMonitorHeight(0):
+    if win_w > get_monitor_width(0) or win_h > get_monitor_height(0):
         print("Warning: Map is too big for window!")
         print("Simulation output will be provided")
-    # else:
+    else:
         # try:
-    s = Solver(m)
-    s.solve()
-    close_window()
-    launch_visualizer(win_w, win_h, map_layout, s.turns) 
+        s = Solver(m)
+        s.solve()
+        close_window()
+        launch_visualizer(win_w, win_h, map_layout, s.turns) 
         # except Exception as e:
         #     print(f"Visualiser Error: {e}")
         #     sys.exit(1)

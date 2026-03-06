@@ -1,14 +1,7 @@
 from dataclasses import dataclass
 from math import ceil, sqrt
+from pyray import Rectangle
 from .map import Map
-
-
-@dataclass
-class Rect:
-    x: int
-    y: int
-    w: float
-    h: float
 
 
 class LayoutConfig:
@@ -19,7 +12,7 @@ class LayoutConfig:
 
 @dataclass
 class ZoneLayout:
-    container: Rect
+    container: Rectangle
     col: int
     row: int
     center_x: int
@@ -36,15 +29,24 @@ class ConnectionLayout:
     end_y: int
 
 
+@dataclass
+class PanelLayout:
+    container: Rectangle
+    turn_info: Rectangle
+    buttons: dict[str, Rectangle]
+
+
 class MapLayout:
     def __init__(self, map_model: Map, cell_size: int = 48) -> None:
         self.map: Map = map_model
         self.cell_size: int = cell_size
         self.zone_layouts: dict[str, ZoneLayout] = {}
         self.connections_layouts: dict[tuple[str, str], ConnectionLayout] = {}
+        self.panel_layout: PanelLayout | None = None
 
         self._init_zone_layouts()
         self._init_connection_layouts()
+        self._init_panel_layout()
 
     def _init_zone_layouts(self) -> None:
         min_x = min(zone.x for zone in self.map.zones.values())
@@ -97,7 +99,7 @@ class MapLayout:
 
             w, h = col_widths[col], row_heights[row]
             container_x, container_y = col_offsets[col], row_offsets[row]
-            container = Rect(container_x, container_y, w, h)
+            container = Rectangle(container_x, container_y, w, h)
 
             center_x = container_x + w // 2
             center_y = container_y + h // 2
@@ -105,8 +107,8 @@ class MapLayout:
             zone = self.map.zones[name]
             cols = rows = ceil(sqrt(zone.max_drones))
 
-            grid_x = container.x + (container.w - grid_w) // 2
-            grid_y = container.y + (container.h - grid_h) // 2
+            grid_x = container.x + (container.width - grid_w) // 2
+            grid_y = container.y + (container.height - grid_h) // 2
 
             drone_coords: dict[tuple[int, int], bool] = {}
             count = 0
@@ -127,30 +129,54 @@ class MapLayout:
                 drone_coords
                 )
 
-
     def _init_connection_layouts(self) -> None:
         for name1, name2 in self.map.connections:
             zone1 = self.zone_layouts[name1]
             zone2 = self.zone_layouts[name2]
 
-            dx = zone2.center_x - zone1.center_x
-            dy = zone2.center_y - zone1.center_y
-
-            length = sqrt(dx ** 2 + dy ** 2)
-
-            if length == 0:
-                continue
-
-            # Vector normalization
-            norm_dx = dx / length
-            norm_dy = dy / length
-
-            start_x = zone1.center_x + norm_dx * zone1.radius
-            start_y = zone1.center_y + norm_dy * zone1.radius
-            end_x = zone2.center_x - norm_dx * zone2.radius
-            end_y = zone2.center_y - norm_dy * zone2.radius
-
             self.connections_layouts[(name1, name2)] = ConnectionLayout(
-                    int(start_x), int(start_y),
-                    int(end_x), int(end_y)
+                    zone1.center_x,
+                    zone1.center_y,
+                    zone2.center_x,
+                    zone2.center_y
                     )
+
+    def _init_panel_layout(self) -> None:
+        total_w = int(max(
+            layout.container.x + layout.container.width
+            for layout in self.zone_layouts.values()
+            ))
+        map_h = int(max(
+            layout.container.y + layout.container.height
+            for layout in self.zone_layouts.values()
+            ))
+        panel_w = 500 if total_w < 500 else total_w
+        panel_h = 70
+        container = Rectangle(
+                0, map_h,
+                panel_w,
+                panel_h
+                )
+
+        turn_info = Rectangle(
+                container.x,
+                container.y,
+                container.width / 4,
+                container.height
+                )
+
+        buttons: dict[str, Rectangle] = {}
+        x = turn_info.x + turn_info.width
+        for btn in ('play_pause', 'step', 'restart'):
+            buttons[btn] = Rectangle(
+                x, turn_info.y,
+                turn_info.width,
+                turn_info.height
+                )
+            x += turn_info.width
+
+        self.panel_layout = PanelLayout(
+                container,
+                turn_info,
+                buttons
+                )

@@ -1,4 +1,3 @@
-from this import d
 from models import Map, ZoneType
 
 
@@ -59,16 +58,9 @@ class Solver:
         self.turns: list[list[tuple[int, str]]] = []
         
     def solve(self) -> None:
-        # print("===================== paths =====================")
         self._find_all_paths()
-        # [print(p) for p in self.paths]
-
-        # print("===================== drone assignments =====================")
         self._assign_drones()
         self._schedule_drones()
-        print(len(self.turns))
-        # [print(f"{i} - {p}") for i, p in self.drone_assignments.items()]
-        # self._simulate_turns()
 
     def _find_all_paths(self) -> None:
         start = self.map.start_zone

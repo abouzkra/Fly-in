@@ -2,7 +2,6 @@ from math import sqrt
 from pyray import *
 from .layout import ConnectionLayout, MapLayout
 
-
 class RenderDrone:
 
     def __init__(
@@ -74,7 +73,7 @@ class RenderDrone:
 
         dist = dx ** 2 + dy ** 2
         step = SPEED * get_frame_time()
-        
+
         if dist < step * step:
             self.x = self.end_x 
             self.y = self.end_y
@@ -103,24 +102,15 @@ class MapRenderer:
         self.current_turn: int = 0
         self.playing: bool = False
 
-        start_zone = layout.map.start_zone
-        start_layout = layout.zone_layouts[start_zone]
-        drone_id = 1
-        for key, occupied in start_layout.drone_coords.items():
-            if not occupied:
-                start_layout.drone_coords[key] = True
-                self.drones[drone_id] = RenderDrone(
-                        drone_id,
-                        start_zone,
-                        key[0], key[1]
-                        )
-                drone_id += 1
+        self._initial_drone_coords: dict[str, dict[tuple[int, int], bool]] = {}
+        self._spawn_drones()
+
+        self.buttons: dict['str', int] = {}
 
     def load_turns(self, turns: list[list[tuple[int, str]]]) -> None:
         self.turns = turns
-        self.playing = True
 
-    def draw(self) -> None:
+    def draw_map(self) -> None:
         self._update()
 
         for connection_layout in self.layout.connections_layouts.values():
@@ -131,7 +121,7 @@ class MapRenderer:
                 BLACK
                 )
 
-        for name, zone_layout in self.layout.zone_layouts.items():
+        for zone_layout in self.layout.zone_layouts.values():
             draw_circle(
                     zone_layout.center_x,
                     zone_layout.center_y,
@@ -144,13 +134,6 @@ class MapRenderer:
                     zone_layout.radius,
                     LIGHTGRAY
                     )
-            # draw_text(
-            #         name,
-            #         int(zone_layout.container.x),
-            #         int(zone_layout.container.y),
-            #         12,
-            #         BLACK
-            #         )
 
         for drone in self.drones.values():
             text = str(drone.id)
@@ -169,7 +152,75 @@ class MapRenderer:
                 font_size,
                 WHITE
                 )
-            
+
+    def draw_panel(self) -> None:
+        panel = self.layout.panel_layout
+        if not panel:
+            return
+
+        displayed_turns = max(0, self.current_turn) if self.playing or self.current_turn > 0 else 0
+        text = f"Turn {displayed_turns} / {len(self.turns)}"
+        font_size = 20
+
+        draw_text(
+            text,
+            int((panel.turn_info.x + panel.turn_info.width - measure_text(text, font_size)) // 2),
+            int(panel.turn_info.y + (panel.turn_info.height - font_size) // 2),
+            font_size,
+            BLACK
+            )
+
+        btn_labels = {
+            'play_pause': "#132#Pause" if self.playing else "#131#Play",
+            'step': "#134#Next",
+            'restart': "#77#Restart"
+            }
+
+        for btn, label in btn_labels.items():
+            rect = panel.buttons[btn]
+            self.buttons[btn] = gui_button(rect, label)
+
+    def handle_click(self) -> None:
+        panel = self.layout.panel_layout
+        if not panel:
+            return
+
+        if not tuple(self.buttons) == ('play_pause', 'step', 'restart'):
+            return
+
+        if self.buttons['play_pause']:
+            if not self.playing and self.current_turn >= len(self.turns):
+                return
+            self.playing = not self.playing
+        if self.buttons['step']:
+            self.playing = False
+            all_idle = all(not d.is_moving for d in self.drones.values())
+
+            if all_idle and self.current_turn < len(self.turns):
+                self._start_turn(self.current_turn)
+                self.current_turn += 1
+        if self.buttons['restart']:
+            self._restart()
+
+    def _spawn_drones(self) -> None:
+        start_zone = self.layout.map.start_zone
+        start_layout = self.layout.zone_layouts[start_zone]
+        drone_id = 1
+        for key, occupied in start_layout.drone_coords.items():
+            if not occupied:
+                start_layout.drone_coords[key] = True
+                self.drones[drone_id] = RenderDrone(
+                        drone_id,
+                        start_zone,
+                        key[0], key[1]
+                        )
+                drone_id += 1
+
+        self._initial_drone_coords = {
+            name: dict(zl.drone_coords)
+            for name, zl in self.layout.zone_layouts.items()
+            }
+
     def _update(self) -> None:
         for drone in self.drones.values():
             drone.update(self.tex_half_w, self.tex_half_h)
@@ -220,3 +271,18 @@ class MapRenderer:
 
             drone.from_zone = next_zone
             drone.current_slot = free_slot
+
+    def _restart(self) -> None:
+        for name, coords in self._initial_drone_coords.items():
+            zl = self.layout.zone_layouts[name]
+            zl.drone_coords = dict(coords)
+
+        for zl in self.layout.zone_layouts.values():
+            for slot in zl.drone_coords:
+                zl.drone_coords[slot] = False
+
+        self.drones.clear()
+        self._spawn_drones()
+
+        self.current_turn = 0
+        self.playing = False
