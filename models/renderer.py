@@ -4,7 +4,6 @@ from .layout import ConnectionLayout, MapLayout
 
 
 class RenderDrone:
-    SPEED: float = 300.0
 
     def __init__(
             self,
@@ -69,11 +68,12 @@ class RenderDrone:
             self.is_moving = False
 
     def _move(self) -> bool:
+        SPEED = 300.0
         dx = self.end_x - self.x
         dy = self.end_y - self.y
 
         dist = dx ** 2 + dy ** 2
-        step = 200 * get_frame_time()
+        step = SPEED * get_frame_time()
         
         if dist < step * step:
             self.x = self.end_x 
@@ -131,12 +131,12 @@ class MapRenderer:
                 BLACK
                 )
 
-        for _, zone_layout in self.layout.zone_layouts.items():
+        for name, zone_layout in self.layout.zone_layouts.items():
             draw_circle(
                     zone_layout.center_x,
                     zone_layout.center_y,
                     zone_layout.radius,
-                    WHITE
+                    LIGHTGRAY
                     )
             draw_circle_lines(
                     zone_layout.center_x,
@@ -144,6 +144,13 @@ class MapRenderer:
                     zone_layout.radius,
                     LIGHTGRAY
                     )
+            # draw_text(
+            #         name,
+            #         int(zone_layout.container.x),
+            #         int(zone_layout.container.y),
+            #         12,
+            #         BLACK
+            #         )
 
         for drone in self.drones.values():
             text = str(drone.id)
@@ -181,9 +188,13 @@ class MapRenderer:
             if drone.is_moving:
                 continue
 
-            connection = self.layout.connections_layouts[
+            connection = self.layout.connections_layouts.get(
                     (drone.from_zone, next_zone)
-                    ]
+                    )
+            if not connection:
+                connection = self.layout.connections_layouts.get(
+                        (next_zone, drone.from_zone)
+                        )
             target_layout = self.layout.zone_layouts[next_zone]
             free_slot = None
 

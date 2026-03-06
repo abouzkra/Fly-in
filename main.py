@@ -4,7 +4,6 @@ from raylib import LOG_NONE, GetMonitorHeight, GetMonitorWidth, SetTargetFPS, Se
 from models import Map, MapLayout, ParsingError, MapRenderer
 from models.solver import Solver
 
-
 def launch_visualizer(
         win_w: int,
         win_h: int,
@@ -66,10 +65,9 @@ def main() -> None:
     # else:
         # try:
     s = Solver(m)
-    turns = s.solve()
-    print(len(turns))
+    s.solve()
     close_window()
-    launch_visualizer(win_w, win_h, map_layout, turns) 
+    launch_visualizer(win_w, win_h, map_layout, s.turns) 
         # except Exception as e:
         #     print(f"Visualiser Error: {e}")
         #     sys.exit(1)
