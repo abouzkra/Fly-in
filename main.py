@@ -67,12 +67,12 @@ def main() -> None:
     if win_w > get_monitor_width(0) or win_h > get_monitor_height(0):
         print("Warning: Map is too big for window!")
         print("Simulation output will be provided")
-    else:
+    # else:
         # try:
-        s = Solver(m)
-        s.solve()
-        close_window()
-        launch_visualizer(win_w, win_h, map_layout, s.turns) 
+    s = Solver(m)
+    s.solve()
+    close_window()
+    launch_visualizer(win_w, win_h, map_layout, s.turns) 
         # except Exception as e:
         #     print(f"Visualiser Error: {e}")
         #     sys.exit(1)

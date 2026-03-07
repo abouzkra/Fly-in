@@ -196,3 +196,9 @@ class Solver:
 
             if turn_moves:
                 self.turns.append(turn_moves)
+
+    @staticmethod
+    def format_turn(turn: list[tuple[int, str]]) -> str:
+        return " ".join(
+            f"D{d_id}-{zone_name}" for d_id, zone_name in turn
+            )

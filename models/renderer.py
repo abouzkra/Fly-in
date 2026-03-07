@@ -1,5 +1,7 @@
 from math import sqrt
 from pyray import *
+
+from models.solver import Solver
 from .layout import ConnectionLayout, MapLayout
 
 class RenderDrone:
@@ -234,6 +236,7 @@ class MapRenderer:
                 self.playing = False
 
     def _start_turn(self, turn_idx: int) -> None:
+        print(Solver.format_turn(self.turns[turn_idx]))
         for drone_id, next_zone in self.turns[turn_idx]:
             drone = self.drones[drone_id]
             if drone.is_moving:
