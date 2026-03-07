@@ -1,8 +1,14 @@
 import sys
-from pyray import *
-from raylib import LOG_NONE, TEXT_SIZE
+from raylib.colors import RAYWHITE
+from pyray import (
+        begin_drawing, clear_background, close_window, end_drawing,
+        gui_set_style, init_window, load_texture, set_target_fps,
+        set_trace_log_level, unload_texture, window_should_close
+        )
+from raylib import DEFAULT, LOG_NONE, TEXT_SIZE
 from models import Map, MapLayout, ParsingError, MapRenderer
 from models.solver import Solver
+
 
 def launch_visualizer(
         win_w: int,
@@ -64,18 +70,14 @@ def main() -> None:
         for layout in map_layout.zone_layouts.values()
         )) + int(map_layout.panel_layout.container.height)
 
-    if win_w > get_monitor_width(0) or win_h > get_monitor_height(0):
-        print("Warning: Map is too big for window!")
-        print("Simulation output will be provided")
-    # else:
-        # try:
-    s = Solver(m)
-    s.solve()
-    close_window()
-    launch_visualizer(win_w, win_h, map_layout, s.turns) 
-        # except Exception as e:
-        #     print(f"Visualiser Error: {e}")
-        #     sys.exit(1)
+    try:
+        s = Solver(m)
+        s.solve()
+        close_window()
+        launch_visualizer(win_w, win_h, map_layout, s.turns)
+    except Exception as e:
+        print(f"Visualiser Error: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

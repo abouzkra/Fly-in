@@ -1,9 +1,12 @@
 from typing import Any
+from webcolors import name_to_rgb
+from random import randint
 from .error import ParsingError
 from .zone import Zone, ZoneType, Neighbor
 
-# TODO: Add zone coordinate validation (check zone coordinates after normalization against zone range)
-# TODO: Check duplicate key-value pairs in metadata
+# TODO: Add zone coordinate validation
+#       (check zone coordinates after normalization against zone range)
+
 
 class Map:
     def __init__(self):
@@ -44,7 +47,6 @@ class Map:
             if self.end_zone is None:
                 raise ParsingError(-1, "Missing end_hub definition")
 
-
     def _parse_nb_drones(self, line: str, line_nb: int) -> None:
         if line.startswith('nb_drones:'):
             try:
@@ -55,7 +57,7 @@ class Map:
             raise ParsingError(
                 line_nb,
                 "Input file must start with: " +
-                "\"nb_drones': <positive_integer>\""
+                "\"nb_drones: <positive_integer>\""
                 )
 
         if self.nb_drones <= 0:
@@ -95,13 +97,30 @@ class Map:
         except ValueError:
             raise ParsingError(line_nb, f"Invalid zone type: '{zone_type}'")
 
+        r = randint(0, 255)
+        g = randint(0, 255)
+        b = randint(0, 255)
+
+        color: int = (r << 24) | (g << 16) | (b << 8) | 255
+        try:
+            rgb = name_to_rgb(metadata['color'])
+            if not rgb:
+                raise ValueError("")
+            color = (rgb.red << 24) | (rgb.green << 16) | (rgb.blue << 8) | 255
+        except (ValueError, KeyError):
+            print(
+                "Warning: invalid color name was passed "
+                f"'{metadata.get('color')}'"
+                )
+            print("Falling back to random color: " + hex(color).upper())
+
         try:
             zone = Zone(
                     name=name,
                     x=x, y=y,
                     zone_type=zone_type,
                     max_drones=metadata.get('max_drones', 1),
-                    color=metadata.get('color')
+                    color=color
                     )
         except Exception as e:
             raise ParsingError(line_nb, str(e))
@@ -109,7 +128,7 @@ class Map:
         if (zone.x, zone.y) in [(z.x, z.y) for z in self.zones.values()]:
             raise ParsingError(
                 line_nb,
-                "Zones with duplicate coordinates were found" + 
+                "Zones with duplicate coordinates were found" +
                 f"{(zone.x, zone.y)}" +
                 f"{[(z.x, z.y) for z in self.zones.values()]}"
                 )
@@ -235,10 +254,15 @@ class Map:
 
             k, v = pair.split('=', 1)
 
-            if '=' in v:
+            if '=' in v or not v:
                 raise ParsingError(
                     line_nb,
                     f"Invalid metadata entry: '{pair}'"
+                    )
+            if k in metadata:
+                raise ParsingError(
+                    line_nb,
+                    f"Duplicate metadata key: '{k}'"
                     )
             metadata[k] = v
 

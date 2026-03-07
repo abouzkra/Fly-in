@@ -45,6 +45,7 @@ class Graph:
                         )
                     )
 
+
 Path = list[str]
 PathWithCost = tuple[Path, float]
 
@@ -56,7 +57,7 @@ class Solver:
         self.paths: list[PathWithCost] = []
         self.drone_assignments: dict[int, Path] = {}
         self.turns: list[list[tuple[int, str]]] = []
-        
+
     def solve(self) -> None:
         self._find_all_paths()
         self._assign_drones()

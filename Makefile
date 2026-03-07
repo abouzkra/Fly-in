@@ -11,14 +11,13 @@ MAP_MED = maps/medium/03_priority_puzzle.txt
 MAP_HARD = maps/hard/02_capacity_hell.txt
 CHALLENGER = maps/challenger/01_the_impossible_dream.txt
 
-PACKAGES_TO_INSTALL = mypy flake8 pydantic raylib
+PACKAGES_TO_INSTALL = mypy flake8 pydantic raylib webcolors
 
 PDB_COMMAND = $(PYTHON) -m pdb $(PROGRAM_NAME).py
 
 CLEAN_COMMAND = rm -rf $$(find . -name "__pycache__" -o -name ".mypy_cache")
 
-MYPY_FLAGS = --warn-return-any --warn-unused-ignores --ignore-missing-imports \
-			--disallow-untyped-defs --check-untyped-defs
+MYPY_FLAGS = --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 LINT_COMMAND = $(FLAKE8) . --exclude $(VENV) & $(MYPY) . $(MYPY_FLAGS) --exclude $(VENV)
 
@@ -33,7 +32,7 @@ install:
 	@echo "Dependencies installed successfully."
 
 run:
-	@$(PYTHON) $(PROGRAM_NAME).py $(MAP_MED)
+	@$(PYTHON) $(PROGRAM_NAME).py $(CHALLENGER)
 
 debug:
 	@$(PDB_COMMAND)

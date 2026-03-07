@@ -1,11 +1,14 @@
 from math import sqrt
-from pyray import *
-
+from pyray import (
+        BLACK, WHITE, Color, Texture,
+        draw_circle, draw_line_ex, draw_text, draw_texture, get_color,
+        get_frame_time, measure_text, gui_button
+        )
 from models.solver import Solver
 from .layout import ConnectionLayout, MapLayout
 
-class RenderDrone:
 
+class RenderDrone:
     def __init__(
             self,
             drone_id: int,
@@ -77,7 +80,7 @@ class RenderDrone:
         step = SPEED * get_frame_time()
 
         if dist < step * step:
-            self.x = self.end_x 
+            self.x = self.end_x
             self.y = self.end_y
             return True
 
@@ -128,13 +131,7 @@ class MapRenderer:
                     zone_layout.center_x,
                     zone_layout.center_y,
                     zone_layout.radius,
-                    LIGHTGRAY
-                    )
-            draw_circle_lines(
-                    zone_layout.center_x,
-                    zone_layout.center_y,
-                    zone_layout.radius,
-                    LIGHTGRAY
+                    get_color(zone_layout.color)
                     )
 
         for drone in self.drones.values():
@@ -160,13 +157,17 @@ class MapRenderer:
         if not panel:
             return
 
-        displayed_turns = max(0, self.current_turn) if self.playing or self.current_turn > 0 else 0
+        displayed_turns = 0
+        if self.playing or self.current_turn > 0:
+            displayed_turns = max(0, self.current_turn)
         text = f"Turn {displayed_turns} / {len(self.turns)}"
         font_size = 20
 
         draw_text(
             text,
-            int((panel.turn_info.x + panel.turn_info.width - measure_text(text, font_size)) // 2),
+            int((panel.turn_info.x +
+                 panel.turn_info.width -
+                 measure_text(text, font_size)) // 2),
             int(panel.turn_info.y + (panel.turn_info.height - font_size) // 2),
             font_size,
             BLACK

@@ -1,4 +1,4 @@
-from typing import Optional, Self
+from typing import Self
 from enum import Enum
 from pydantic import BaseModel, Field, model_validator
 
@@ -23,7 +23,7 @@ class Zone(BaseModel):
     neighbors: list[Neighbor] = Field(default_factory=list)
     zone_type: ZoneType = Field(default=ZoneType.NORMAL)
     max_drones: int = Field(default=1, gt=0)
-    color: Optional[str] = None
+    color: int
 
     @model_validator(mode='after')
     def validate_zone(self) -> Self:
