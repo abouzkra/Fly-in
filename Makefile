@@ -8,7 +8,7 @@ FLAKE8 = ./$(VENV)/bin/flake8
 PROGRAM_NAME = main
 MAP_EASY = maps/easy/02_simple_fork.txt
 MAP_MED = maps/medium/03_priority_puzzle.txt
-MAP_HARD = maps/hard/02_capacity_hell.txt
+MAP_HARD = maps/hard/01_maze_nightmare.txt
 CHALLENGER = maps/challenger/01_the_impossible_dream.txt
 
 PACKAGES_TO_INSTALL = mypy flake8 pydantic raylib webcolors
@@ -32,7 +32,7 @@ install:
 	@echo "Dependencies installed successfully."
 
 run:
-	@$(PYTHON) $(PROGRAM_NAME).py $(CHALLENGER)
+	@$(PYTHON) $(PROGRAM_NAME).py $(MAP_HARD)
 
 debug:
 	@$(PDB_COMMAND)

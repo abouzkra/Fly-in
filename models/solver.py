@@ -1,4 +1,4 @@
-from models import Map, ZoneType
+from models import Map, ParsingError, ZoneType
 
 
 class Edge:
@@ -60,6 +60,11 @@ class Solver:
 
     def solve(self) -> None:
         self._find_all_paths()
+        if not self.paths:
+            raise Exception(
+                f"Map has no valid paths from " +
+                f"'{self.map.start_zone}' to '{self.map.end_zone}'"
+                )
         self._assign_drones()
         self._schedule_drones()
 

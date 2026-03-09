@@ -69,16 +69,20 @@ def main() -> None:
         layout.container.y + layout.container.height
         for layout in map_layout.zone_layouts.values()
         )) + int(map_layout.panel_layout.container.height)
+    close_window()
 
     try:
         s = Solver(m)
         s.solve()
-        close_window()
+    except Exception as e:
+        print(f"Solver Error: {e}")
+        sys.exit(1)
+
+    try:
         launch_visualizer(win_w, win_h, map_layout, s.turns)
     except Exception as e:
         print(f"Visualiser Error: {e}")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
