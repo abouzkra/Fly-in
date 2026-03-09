@@ -1,6 +1,6 @@
 from math import sqrt
 from pyray import (
-        BLACK, WHITE, Color, Texture,
+        BLACK, BLUE, GREEN, ORANGE, RED, VIOLET, WHITE, YELLOW, Color, Texture,
         draw_circle, draw_line_ex, draw_text, draw_texture, get_color,
         get_frame_time, measure_text, gui_button
         )
@@ -127,12 +127,19 @@ class MapRenderer:
                 )
 
         for zone_layout in self.layout.zone_layouts.values():
-            draw_circle(
+            if zone_layout.color == -1:
+                self._draw_rainbow_circle(
                     zone_layout.center_x,
                     zone_layout.center_y,
                     zone_layout.radius,
-                    get_color(zone_layout.color)
                     )
+            else:
+                draw_circle(
+                        zone_layout.center_x,
+                        zone_layout.center_y,
+                        zone_layout.radius,
+                        get_color(zone_layout.color)
+                        )
 
         for drone in self.drones.values():
             text = str(drone.id)
@@ -182,6 +189,16 @@ class MapRenderer:
         for btn, label in btn_labels.items():
             rect = panel.buttons[btn]
             self.buttons[btn] = gui_button(rect, label)
+
+    def _draw_rainbow_circle(self, x: int, y: int, radius: float) -> None:
+        gradients = [
+                RED, ORANGE, YELLOW, GREEN,
+                BLUE, Color(75, 0, 130, 255), VIOLET
+                ]
+        r = radius
+        for c in gradients:
+            draw_circle(x, y, r, c)
+            r -= radius / 6
 
     def handle_click(self) -> None:
         panel = self.layout.panel_layout

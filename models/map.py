@@ -4,9 +4,6 @@ from random import randint
 from .error import ParsingError
 from .zone import Zone, ZoneType, Neighbor
 
-# TODO: Add zone coordinate validation
-#       (check zone coordinates after normalization against zone range)
-
 
 class Map:
     def __init__(self):
@@ -103,10 +100,14 @@ class Map:
 
         color: int = (r << 24) | (g << 16) | (b << 8) | 255
         try:
-            rgb = name_to_rgb(metadata['color'])
-            if not rgb:
-                raise ValueError("")
-            color = (rgb.red << 24) | (rgb.green << 16) | (rgb.blue << 8) | 255
+            color_name = metadata['color']
+            if color_name == 'rainbow':
+                color = -1
+            else:
+                rgb = name_to_rgb(color_name)
+                color = (
+                    (rgb.red << 24) | (rgb.green << 16) | (rgb.blue << 8) | 255
+                    )
         except (ValueError, KeyError):
             print(
                 "Warning: invalid color name was passed "
