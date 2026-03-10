@@ -13,13 +13,12 @@ The project is split into four independent layers:
 # Instructions
 ### Requirements
 - Python 3.10 or later
-- pip package manager
+- poetry tool for dependency management
 
 ### Installation
-Create and activate a virtual environment and install dependencies:
+Install dependencies using poetry:
 ```bash
 make install
-source .venv/bin/activate
 ```
 
 ### Running the program
@@ -49,5 +48,19 @@ make clean
 ```
 
 # Resources
+- [Graph data structure](https://www.geeksforgeeks.org/dsa/graph-data-structure/)
+- [Flow Network](https://brilliant.org/wiki/flow-network/)
+- [Breadth first search](https://en.wikipedia.org/wiki/Breadth-first_search)
+- [Maximum flow problems](https://en.wikipedia.org/wiki/Maximum_flow_problem)
+- [Raylib](https://www.raylib.com/)
+
+### AI Usage
+AI was used as a development assistant throughout the project. The following tasks involved AI-generated or AI-assisted content, all of which was reviewed, understood and adapted before integration:
+- **Solver architecture**:
+- **Parser improvements**:
+- **Visualizer suggestions**:
+- **Documentation & Docstrings**:
+
+AI was not used to generate code that was copy-pasted without understanding. In every case the generated output was read, questioned and modified to fit the project's specific requirements.
 
 # Additional sections
