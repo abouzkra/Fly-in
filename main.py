@@ -6,15 +6,14 @@ from pyray import (
         set_trace_log_level, unload_texture, window_should_close
         )
 from raylib import DEFAULT, LOG_NONE, TEXT_SIZE
-from models import Map, MapLayout, ParsingError, MapRenderer
-from models.solver import Solver
+from src import Map, MapLayout, ParsingError, MapRenderer, Solver
 
 
 def launch_visualizer(
         win_w: int,
         win_h: int,
         map_layout: MapLayout,
-        turns
+        turns: list[list[tuple[int, str]]]
         ) -> None:
     init_window(win_w, win_h, "Fly-in")
     gui_set_style(DEFAULT, TEXT_SIZE, 20)
@@ -83,6 +82,7 @@ def main() -> None:
     except Exception as e:
         print(f"Visualiser Error: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

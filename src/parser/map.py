@@ -6,10 +6,10 @@ from .zone import Zone, ZoneType, Neighbor
 
 
 class Map:
-    def __init__(self):
-        self.nb_drones: int | None = None
-        self.start_zone: str | None = None
-        self.end_zone: str | None = None
+    def __init__(self) -> None:
+        self.nb_drones: int = 0
+        self.start_zone: str = ""
+        self.end_zone: str = ""
         self.zones: dict[str, Zone] = {}
         self.connections: list[tuple[str, str]] = list()
 
@@ -21,7 +21,7 @@ class Map:
                 if not line or line.startswith('#'):
                     continue
 
-                if self.nb_drones is None:
+                if self.nb_drones == 0:
                     self._parse_nb_drones(line, line_nb)
                     continue
 
@@ -39,16 +39,16 @@ class Map:
                         f"Invalid line format: \"{line}\""
                         )
 
-            if self.start_zone is None:
+            if not self.start_zone:
                 raise ParsingError(-1, "Missing start_hub definition")
-            if self.end_zone is None:
+            if not self.end_zone:
                 raise ParsingError(-1, "Missing end_hub definition")
 
     def _parse_nb_drones(self, line: str, line_nb: int) -> None:
         if line.startswith('nb_drones:'):
             try:
                 self.nb_drones = int(line.split(':', 1)[1].strip())
-            except Exception as e:
+            except ValueError as e:
                 raise ParsingError(line_nb, str(e))
         else:
             raise ParsingError(
@@ -63,12 +63,12 @@ class Map:
                 "nb_drones must be a positive integer"
                 )
 
-    def _parse_zone(self, line: str, line_nb: int, zone_kind: str):
-        metadata = ""
+    def _parse_zone(self, line: str, line_nb: int, zone_kind: str) -> None:
+        metadata_str = ""
 
         if "[" in line:
-            line, metadata = line.split('[', 1)
-            metadata = "[" + metadata
+            line, metadata_str = line.split('[', 1)
+            metadata_str = "[" + metadata_str
 
         tokens = line.split()
         if len(tokens) != 4:
@@ -81,7 +81,7 @@ class Map:
         _, name, x, y = tokens
 
         metadata = self._parse_metadata(
-                metadata, line_nb,
+                metadata_str, line_nb,
                 {'zone', 'color', 'max_drones'}
                 )
 
@@ -118,7 +118,7 @@ class Map:
         try:
             zone = Zone(
                     name=name,
-                    x=x, y=y,
+                    x=int(x), y=int(y),
                     zone_type=zone_type,
                     max_drones=metadata.get('max_drones', 1),
                     color=color
@@ -154,7 +154,7 @@ class Map:
 
         self.zones[name] = zone
 
-    def _parse_connection(self, line: str, line_nb: int):
+    def _parse_connection(self, line: str, line_nb: int) -> None:
         if not line.startswith("connection:") or '-' not in line:
             raise ParsingError(
                 line_nb,

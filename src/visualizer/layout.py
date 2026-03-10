@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from math import ceil, sqrt
 from pyray import Rectangle
-from .map import Map
+from ..parser.map import Map
 
 
 class LayoutConfig:
@@ -43,7 +43,7 @@ class MapLayout:
         self.cell_size: int = cell_size
         self.zone_layouts: dict[str, ZoneLayout] = {}
         self.connections_layouts: dict[tuple[str, str], ConnectionLayout] = {}
-        self.panel_layout: PanelLayout | None = None
+        self.panel_layout: PanelLayout
 
         self._init_zone_layouts()
         self._init_connection_layouts()
@@ -56,8 +56,6 @@ class MapLayout:
         container_sizes: dict[str, tuple[float, float, float]] = {}
         zone_grid: dict[str, tuple[int, int, int, int]] = {}
 
-        container_x: int = 0
-        container_y: int = 0
         for name, zone in self.map.zones.items():
             col, row = zone.x - min_x, zone.y - min_y
 
@@ -78,8 +76,8 @@ class MapLayout:
                     )
             zone_grid[name] = (zone.x - min_x, zone.y - min_y, grid_w, grid_h)
 
-        col_widths = {}
-        row_heights = {}
+        col_widths: dict[int, float] = {}
+        row_heights: dict[int, float] = {}
         for name, (col, row, _, __) in zone_grid.items():
             w, h, r = container_sizes[name]
 
@@ -89,11 +87,11 @@ class MapLayout:
         col_offsets = {}
         row_offsets = {}
 
-        current = 0
+        current = 0.
         for col in sorted(col_widths):
             col_offsets[col] = current
             current += col_widths[col]
-        current = 0
+        current = 0.
         for row in sorted(row_heights):
             row_offsets[row] = current
             current += row_heights[row]
@@ -102,11 +100,11 @@ class MapLayout:
             w, h, radius = container_sizes[name]
 
             w, h = col_widths[col], row_heights[row]
-            container_x, container_y = col_offsets[col], row_offsets[row]
-            container = Rectangle(container_x, container_y, w, h)
+            container_x_, container_y_ = col_offsets[col], row_offsets[row]
+            container = Rectangle(container_x_, container_y_, w, h)
 
-            center_x = container_x + w // 2
-            center_y = container_y + h // 2
+            center_x = container_x_ + w // 2
+            center_y = container_y_ + h // 2
 
             zone = self.map.zones[name]
             cols = rows = ceil(sqrt(zone.max_drones))

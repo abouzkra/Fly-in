@@ -4,7 +4,7 @@ from pyray import (
         draw_circle, draw_line_ex, draw_text, draw_texture, get_color,
         get_frame_time, measure_text, gui_button
         )
-from models.solver import Solver
+from ..solver.solver import Solver
 from .layout import ConnectionLayout, MapLayout
 
 
@@ -18,7 +18,7 @@ class RenderDrone:
         self.id: int = drone_id
         self.from_zone: str = start_zone
 
-        self.connection: ConnectionLayout | None = None
+        self.connection: ConnectionLayout
 
         self.current_slot: tuple[int, int] = (x, y)
         self.target_slot: tuple[int, int] = (x, y)
@@ -255,18 +255,19 @@ class MapRenderer:
 
     def _start_turn(self, turn_idx: int) -> None:
         print(Solver.format_turn(self.turns[turn_idx]))
+
         for drone_id, next_zone in self.turns[turn_idx]:
             drone = self.drones[drone_id]
             if drone.is_moving:
                 continue
 
-            connection = self.layout.connections_layouts.get(
+            connection = self.layout.connections_layouts[
                     (drone.from_zone, next_zone)
-                    )
+                    ]
             if not connection:
-                connection = self.layout.connections_layouts.get(
+                connection = self.layout.connections_layouts[
                         (next_zone, drone.from_zone)
-                        )
+                        ]
             target_layout = self.layout.zone_layouts[next_zone]
             free_slot = None
 
