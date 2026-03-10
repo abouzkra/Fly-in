@@ -61,7 +61,7 @@ class Solver:
                     continue
                 q.append(curr_path + [neigh])
 
-        self.paths = sorted(res, key=lambda p: p[1])
+        self.paths = sorted(res, key=lambda p: p[1])[0: 2]
 
     def _path_cost(self, path: Path) -> float:
         cost = 0.

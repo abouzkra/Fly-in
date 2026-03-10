@@ -261,13 +261,16 @@ class MapRenderer:
             if drone.is_moving:
                 continue
 
-            connection = self.layout.connections_layouts[
+            connection = (
+                self.layout.connections_layouts.get(
                     (drone.from_zone, next_zone)
-                    ]
-            if not connection:
-                connection = self.layout.connections_layouts[
-                        (next_zone, drone.from_zone)
-                        ]
+                ) or self.layout.connections_layouts.get(
+                    (next_zone, drone.from_zone)
+                )
+            )
+
+            assert connection is not None
+
             target_layout = self.layout.zone_layouts[next_zone]
             free_slot = None
 
