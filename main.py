@@ -19,6 +19,14 @@ def launch_visualizer(
         map_layout: MapLayout,
         turns: list[list[tuple[int, str]]]
         ) -> None:
+    """Launches the visualiser.
+
+    Args:
+        win_w (int): Window width.
+        win_h (int): Window height.
+        map_layout (MapLayout): Precomputed layout of the map and panel.
+        turns (list[list[tuple[int, str]]]): List of turns to simulate.
+    """
     init_window(win_w, win_h, "Fly-in")
     gui_set_style(DEFAULT, TEXT_SIZE, 20)
 
@@ -42,6 +50,15 @@ def launch_visualizer(
 
 
 def build_layout(m: Map, tex_width: int) -> tuple[MapLayout, int, int]:
+    """Builds the layout of the map and panel.
+
+    Args:
+        m (Map): The map to build the layout for.
+        tex_width (int): The width of the drone texture.
+
+    Returns:
+        tuple[MapLayout, int, int]: The built layout and window dimensions.
+    """
     map_layout = MapLayout(m, tex_width)
 
     win_w = max(
@@ -60,6 +77,7 @@ def build_layout(m: Map, tex_width: int) -> tuple[MapLayout, int, int]:
 
 
 def main() -> None:
+    """Main function to run the program."""
     if len(sys.argv) != 2:
         print("Usage: python3 main.py <map_file>")
         sys.exit(1)

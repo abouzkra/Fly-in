@@ -9,6 +9,33 @@ from .layout import ConnectionLayout, MapLayout
 
 
 class RenderDrone:
+    """Represents a drone in the renderer, handling its position and movement
+    animation.
+
+    Attributes:
+        id (int): Unique identifier for the drone.
+        from_zone (str): The zone from which the drone is moving.
+        connection (ConnectionLayout): The connection layout the drone is
+            currently moving along.
+        current_slot (tuple[int, int]): The current slot coordinates of the
+            drone in its zone.
+        target_slot (tuple[int, int]): The target slot coordinates of the
+            drone in its destination zone.
+        x (float): The current x-coordinate of the drone for rendering.
+        y (float): The current y-coordinate of the drone for rendering.
+        is_moving (bool): Indicates whether the drone is currently moving.
+        phase (int): The current phase of the movement animation (
+            0: moving to connection start,
+            1: moving along connection,
+            2: moving to target slot
+            ).
+        start_x (float): The starting x-coordinate for the current movement
+            phase.
+        start_y (float): The starting y-coordinate for the current movement
+            phase.
+        end_x (float): The ending x-coordinate for the current movement phase.
+        end_y (float): The ending y-coordinate for the current movement phase.
+    """
     def __init__(
             self,
             drone_id: int,
@@ -40,6 +67,19 @@ class RenderDrone:
             target_slot: tuple[int, int],
             tex_half_w: int, tex_half_h: int
             ) -> None:
+        """Iinitiates the movement of the drone along a connection towards a
+        target slot.
+
+        Args:
+            connection (ConnectionLayout): The connection layout the drone
+                will move along.
+            target_slot (tuple[int, int]): The target slot coordinates in the
+                destination zone.
+            tex_half_w (int): Half the width of the drone texture, used for
+                centering the drone during movement.
+            tex_half_h (int): Half the height of the drone texture, used for
+                centering the drone during movement.
+        """
         self.connection = connection
         self.target_slot = target_slot
 
@@ -53,6 +93,15 @@ class RenderDrone:
         self.end_y = connection.start_y - tex_half_h
 
     def update(self, tex_half_w: int, tex_half_h: int) -> None:
+        """Updates the drone's position based on its current movement phase and
+        the elapsed time.
+
+        Args:
+            tex_half_w (int): Half the width of the drone texture, used for
+                centering the drone during movement.
+            tex_half_h (int): Half the height of the drone texture, used for
+                centering the drone during movement.
+        """
         if not self.is_moving or not self._move():
             return
 
@@ -72,6 +121,8 @@ class RenderDrone:
             self.is_moving = False
 
     def _move(self) -> bool:
+        """Moves the drone towards its current target position based on the
+        elapsed time and returns whether it has reached the target."""
         SPEED = 300.0
         dx = self.end_x - self.x
         dy = self.end_y - self.y
@@ -95,7 +146,42 @@ class RenderDrone:
 
 
 class MapRenderer:
+    """Holds all the rendering logic for the map, including drawing the map
+    layout, drones, and handling the animation of drone movements and user
+    interactions.
+
+    Attributes:
+        layout (MapLayout): The layout of the map, including zones and
+            connections.
+        drone_texture (Texture): The texture used to represent drones on the
+            map.
+        tex_half_w (int): Half the width of the drone texture, used for
+            centering drones during movement.
+        tex_half_h (int): Half the height of the drone texture, used for
+            centering drones during movement.
+        drones (dict[int, RenderDrone]): A dictionary mapping drone IDs to
+            their corresponding RenderDrone instances.
+        turns (list[list[tuple[int, str]]]): A list of turns, where each turn
+            is a list of tuples containing drone ID and the next zone it will
+            move to.
+        current_turn (int): The index of the current turn being displayed.
+        playing (bool): Indicates whether the animation is currently playing.
+        _initial_drone_coords (dict[str, dict[tuple[int, int], bool]]): A
+            dictionary storing the initial coordinates of drones in each zone,
+            used for resetting the map when restarting the animation.
+        buttons (dict[str, int]): A dictionary mapping button labels to their
+            corresponding GUI elements.
+    """
     def __init__(self, layout: MapLayout, drone_texture: Texture):
+        """Initializes the MapRenderer with the given map layout and drone
+        texture.
+
+        Args:
+            layout (MapLayout): The layout of the map, including zones and
+                connections.
+            drone_texture (Texture): The texture used to represent drones on
+                the map.
+        """
         self.layout: MapLayout = layout
         self.drone_texture: Texture = drone_texture
         self.tex_half_w: int = drone_texture.width // 2
@@ -110,12 +196,21 @@ class MapRenderer:
         self._initial_drone_coords: dict[str, dict[tuple[int, int], bool]] = {}
         self._spawn_drones()
 
-        self.buttons: dict['str', int] = {}
+        self.buttons: dict[str, int] = {}
 
     def load_turns(self, turns: list[list[tuple[int, str]]]) -> None:
+        """Loads the turns to be displayed in the animation.
+
+        Args:
+            turns (list[list[tuple[int, str]]]): A list of turns, where each
+                turn is a list of tuples containing drone ID and the next zone
+                it will move to.
+        """
         self.turns = turns
 
     def draw_map(self) -> None:
+        """Draws the map layout, including connections, zones, and drones, and
+        updates the positions of moving drones."""
         self._update()
 
         for connection_layout in self.layout.connections_layouts.values():
@@ -160,6 +255,8 @@ class MapRenderer:
                 )
 
     def draw_panel(self) -> None:
+        """Draws the control panel, including the current turn information and
+        control buttons."""
         panel = self.layout.panel_layout
         if not panel:
             return
@@ -191,6 +288,8 @@ class MapRenderer:
             self.buttons[btn] = gui_button(rect, label)
 
     def _draw_rainbow_circle(self, x: int, y: int, radius: float) -> None:
+        """Draws a circle with rainbow colors, used for zones with 'rainbow'
+        color value."""
         gradients = [
                 RED, ORANGE, YELLOW, GREEN,
                 BLUE, Color(75, 0, 130, 255), VIOLET
@@ -201,6 +300,7 @@ class MapRenderer:
             r -= radius / 6
 
     def handle_click(self) -> None:
+        """Handles click events on the control panel."""
         panel = self.layout.panel_layout
         if not panel:
             return
@@ -223,6 +323,9 @@ class MapRenderer:
             self._restart()
 
     def _spawn_drones(self) -> None:
+        """Spawns drones in the starting zone based on the initial layout and
+        stores their initial coordinates for resetting when restarting
+        the animation."""
         start_zone = self.layout.map.start_zone
         start_layout = self.layout.zone_layouts[start_zone]
         drone_id = 1
@@ -242,6 +345,13 @@ class MapRenderer:
             }
 
     def _update(self) -> None:
+        """Updates the positions of all moving drones and checks if the
+        current turn's animation has ended:
+            - If the animation has ended and the animation is playing, it
+                starts the next turn.
+            - Else, it continues updating the positions of the moving drones
+            until they reach their targets.
+        """
         for drone in self.drones.values():
             drone.update(self.tex_half_w, self.tex_half_h)
 
@@ -254,6 +364,9 @@ class MapRenderer:
                 self.playing = False
 
     def _start_turn(self, turn_idx: int) -> None:
+        """Starts the animation for a specific turn by initiating the movement
+        of the drones according to the turn's instructions, and prints the
+        turn information to the console."""
         print(Solver.format_turn(self.turns[turn_idx]))
 
         for drone_id, next_zone in self.turns[turn_idx]:
@@ -298,6 +411,10 @@ class MapRenderer:
             drone.current_slot = free_slot
 
     def _restart(self) -> None:
+        """Resets the map to its initial state by resetting the drone
+        coordinates in each zone, clearing the current drones, respawning the
+        drones in the starting zone, and resetting the current turn and
+        playing state."""
         for name, coords in self._initial_drone_coords.items():
             zl = self.layout.zone_layouts[name]
             zl.drone_coords = dict(coords)

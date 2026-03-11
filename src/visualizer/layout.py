@@ -5,6 +5,7 @@ from ..parser.map import Map
 
 
 class LayoutConfig:
+    """Configuration for layout calculations."""
     zone_x_padding: int = 20
     zone_y_padding: int = 50
     drone_padding: int = 5
@@ -12,6 +13,19 @@ class LayoutConfig:
 
 @dataclass
 class ZoneLayout:
+    """Layout information for a single zone.
+
+    Attributes:
+        container: The rectangle representing the zone's area.
+        col: The column index of the zone in the grid.
+        row: The row index of the zone in the grid.
+        center_x: The x-coordinate of the zone's center.
+        center_y: The y-coordinate of the zone's center.
+        radius: The radius of the zone's circular area for drone placement.
+        drone_coords: A dictionary mapping drone coordinates to their
+            occupancy status.
+        color: The RGBA color of the zone.
+    """
     container: Rectangle
     col: int
     row: int
@@ -24,6 +38,14 @@ class ZoneLayout:
 
 @dataclass
 class ConnectionLayout:
+    """Layout information for a connection between two zones.
+
+    Attributes:
+        start_x: The x-coordinate of the connection's starting point.
+        start_y: The y-coordinate of the connection's starting point.
+        end_x: The x-coordinate of the connection's ending point.
+        end_y: The y-coordinate of the connection's ending point.
+    """
     start_x: int
     start_y: int
     end_x: int
@@ -32,12 +54,30 @@ class ConnectionLayout:
 
 @dataclass
 class PanelLayout:
+    """Layout information for the control panel.
+
+    Attributes:
+        container: The rectangle representing the panel's area.
+        turn_info: The rectangle for displaying turn information.
+        buttons: A dictionary mapping button names to their rectangles.
+    """
     container: Rectangle
     turn_info: Rectangle
     buttons: dict[str, Rectangle]
 
 
 class MapLayout:
+    """Holds layout information for the entire map, including zones,
+    connections, and the control panel.
+
+    Attributes:
+        map: The map model containing zones and connections.
+        cell_size: The size of each cell for drone placement.
+        zone_layouts: A dictionary mapping zone names to their layouts.
+        connections_layouts: A dictionary mapping pairs of zone names to their
+            connection layouts.
+        panel_layout: The layout for the control panel.
+    """
     def __init__(self, map_model: Map, cell_size: int = 48) -> None:
         self.map: Map = map_model
         self.cell_size: int = cell_size
@@ -50,6 +90,8 @@ class MapLayout:
         self._init_panel_layout()
 
     def _init_zone_layouts(self) -> None:
+        """Initializes the layout for each zone based on its position and
+        maximum drone capacity."""
         min_x = min(zone.x for zone in self.map.zones.values())
         min_y = min(zone.y for zone in self.map.zones.values())
 
@@ -135,6 +177,8 @@ class MapLayout:
                 )
 
     def _init_connection_layouts(self) -> None:
+        """Initializes the layout for each connection by calculating the start
+        and end points using vector normalization."""
         for name1, name2 in self.map.connections:
             zone1 = self.zone_layouts[name1]
             zone2 = self.zone_layouts[name2]
@@ -147,7 +191,6 @@ class MapLayout:
             if length == 0:
                 continue
 
-            # Vector normalization
             norm_dx = dx / length
             norm_dy = dy / length
 
@@ -162,6 +205,8 @@ class MapLayout:
                     )
 
     def _init_panel_layout(self) -> None:
+        """Initializes the layout for the control panel, positioning it below
+        the map and calculating the areas for turn information and buttons."""
         total_w = int(max(
             layout.container.x + layout.container.width
             for layout in self.zone_layouts.values()

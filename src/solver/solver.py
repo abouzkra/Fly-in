@@ -8,7 +8,27 @@ PathWithCost = tuple[Path, float]
 
 
 class Solver:
+    """Solver for the drone routing problem. It works in three steps:
+    1. Find all valid paths from the start zone to the end zone, and compute
+       their costs.
+    2. Assign drones to paths, prioritizing cheaper paths.
+    3. Schedule drone movements turn by turn, ensuring that zone and link
+       capacities are respected.
+
+    Attributes:
+        map: The parsed map of the problem.
+        graph: A graph representation of the map for pathfinding.
+        paths: A list of valid paths from start to end, along with their costs.
+        drone_assignments: A mapping of drone IDs to their assigned paths.
+        turns: A list of turns, where each turn is a list of drone movements.
+    """
     def __init__(self, parsed_map: Map) -> None:
+        """Initialize the solver with the parsed map.
+
+        Args:
+            parsed_map: The map of the problem, containing zones, edges,
+                and drone information.
+        """
         self.map: Map = parsed_map
         self.graph: Graph = Graph(parsed_map)
         self.paths: list[PathWithCost] = []
@@ -16,6 +36,12 @@ class Solver:
         self.turns: list[list[tuple[int, str]]] = []
 
     def solve(self) -> None:
+        """Solve the drone routing problem by executing the three main steps.
+
+        Raises:
+            Exception: If no valid paths are found from the start zone to the
+                end
+        """
         self._find_all_paths()
         if not self.paths:
             raise Exception(
@@ -26,6 +52,16 @@ class Solver:
         self._schedule_drones()
 
     def _find_all_paths(self) -> None:
+        """Runs BFS to find all valid paths from the start zone to the end
+        zone, and computes their costs based on path length and zone types.
+
+        Valid paths are those that do not pass through blocked zones and
+        respect the map's structure. The results are stored in the `paths`
+        attribute, sorted by cost.
+
+        Only the two cheapest paths are kept for assignment, as the solver
+        prioritizes efficiency and simplicity in drone assignments.
+        """
         start = self.map.start_zone
         end = self.map.end_zone
 
@@ -64,6 +100,13 @@ class Solver:
         self.paths = sorted(res, key=lambda p: p[1])[0: 2]
 
     def _path_cost(self, path: Path) -> float:
+        """Simple cost function that computes the cost of a path based on its
+        length and the types of zones it passes through.
+            - Priority zones reduce cost so they are favored.
+            - Restricted zones increase cost to discourage their use.
+            - Blocked zones are not considered valid paths and would have an
+              infinite cost.
+        """
         cost = 0.
         cost += len(path)
 
@@ -75,6 +118,9 @@ class Solver:
         return cost
 
     def _assign_drones(self) -> None:
+        """Simple drone assignment strategy that assigns drones to the
+        cheapest path first.
+        """
         for drone_id in range(1, self.map.nb_drones + 1):
             best_path = self.paths[0]
             self.drone_assignments[drone_id] = best_path[0]
@@ -82,6 +128,13 @@ class Solver:
             self.paths = sorted(self.paths, key=lambda p: p[1])
 
     def _schedule_drones(self) -> None:
+        """Schedules drone movements turn by turn, ensuring that zone and link
+        capacities are respected. Drones move along their assigned paths, and
+        the solver checks for conflicts at each turn, such as multiple drones
+        trying to enter the same zone or use the same link. If a conflict is
+        detected, the drone will wait until the next turn to attempt the move
+        again. The results are stored in the `turns` attribute, which contains
+        the sequence of drone movements for each turn."""
         if not self.paths or not self.drone_assignments:
             return
 
@@ -102,11 +155,37 @@ class Solver:
             link_used: dict[tuple[str, str], int] = {}
 
             def is_zone_free(name: str) -> int:
+                """Checks whether a zone has free capacity for incoming drones,
+                considering the current number of drones in the zone, the
+                number of drones leaving, and the number of drones arriving.
+
+                Args:
+                    name: The name of the zone to check.
+
+                Returns:
+                    The number of free slots available in the zone for incoming
+                    drones. A value of 0 or less indicates that the zone is at
+                    or over capacity, while a positive value indicates the
+                    number of additional drones that can enter the zone without
+                    exceeding its capacity.
+                """
                 z = self.map.zones[name]
                 net = zone_count[name] - leaving[name]
                 return z.max_drones - net - arriving[name]
 
             def is_link_free(s: str, d: str) -> bool:
+                """Checks whether a link between two zones has free capacity
+                for drones to use, considering the number of drones currently
+                using the link.
+
+                Args:
+                    s: The source zone of the link.
+                    d: The destination zone of the link.
+
+                Returns:
+                    True if the link has free capacity for another drone to
+                    use, False if the link is at or over capacity.
+                """
                 node = self.graph.nodes.get(s)
                 if not node:
                     return False
@@ -162,6 +241,13 @@ class Solver:
 
     @staticmethod
     def format_turn(turn: list[tuple[int, str]]) -> str:
+        """Stringifies a turn, which is a list of drone movements, into the
+        required output format.
+
+        Args:
+            turn: A list of tuples, where each tuple contains a drone ID and
+                the zone it moves to in that turn.
+        """
         return " ".join(
             f"D{d_id}-{zone_name}" for d_id, zone_name in turn
             )

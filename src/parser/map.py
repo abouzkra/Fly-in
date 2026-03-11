@@ -6,7 +6,24 @@ from .zone import Zone, ZoneType, Neighbor
 
 
 class Map:
+    """Parser for the map definition file, which contains the zones and
+    connection definitions. The expected format of the file is as follows:
+        nb_drones: <positive_integer>
+        start_hub: <name> <x> <y>
+        end_hub: <name> <x> <y>
+        hub: <name> <x> <y>
+        connection: <zone1> <zone2>
+
+    Attributes:
+        nb_drones: The number of drones in the simulation
+        start_zone: The name of the starting zone
+        end_zone: The name of the ending zone
+        zones: A dictionary mapping zone names to Zone objects
+        connections: A list of tuples representing the connections between
+            zones
+    """
     def __init__(self) -> None:
+        """Initializes the Map object with default values."""
         self.nb_drones: int = 0
         self.start_zone: str = ""
         self.end_zone: str = ""
@@ -14,6 +31,19 @@ class Map:
         self.connections: list[tuple[str, str]] = list()
 
     def parse_file(self, input_file: str) -> None:
+        """Parses the input file and populates the Map object with the defined
+        zones and connections.
+
+        Args:
+            input_file: The path to the input file containing the map
+                definition
+
+        Raises:
+            ParsingError: If the input file contains invalid syntax or if there
+                are issues with the defined zones or connections
+                (e.g., duplicate zone names, undefined zones in connections,
+                etc.)
+        """
         with open(input_file, 'r') as file:
             for line_nb, line in enumerate(file, start=1):
                 line = line.strip()
@@ -45,6 +75,16 @@ class Map:
                 raise ParsingError(-1, "Missing end_hub definition")
 
     def _parse_nb_drones(self, line: str, line_nb: int) -> None:
+        """Parses the number of drones from the input line.
+
+        Args:
+            line: The input line containing the number of drones definition
+            line_nb: The line number in the input file
+
+        Raises:
+            ParsingError: If the line does not start with "nb_drones:"
+                or if the value is not a positive integer
+        """
         if line.startswith('nb_drones:'):
             try:
                 self.nb_drones = int(line.split(':', 1)[1].strip())
@@ -64,6 +104,21 @@ class Map:
                 )
 
     def _parse_zone(self, line: str, line_nb: int, zone_kind: str) -> None:
+        """Parses a zone definition from the input line and adds it to the Map
+        object.
+
+        Args:
+            line: The input line containing the zone definition
+            line_nb: The line number in the input file
+            zone_kind: The type of the zone being parsed (e.g., "start",
+                "end", "hub")
+
+        Raises:
+            ParsingError: If the line does not follow the expected format for
+                zone definitions, if there are duplicate zone names, if the
+                zone type is invalid, if the color name is invalid, or if
+                there are zones with duplicate coordinates.
+        """
         metadata_str = ""
 
         if "[" in line:
@@ -155,6 +210,19 @@ class Map:
         self.zones[name] = zone
 
     def _parse_connection(self, line: str, line_nb: int) -> None:
+        """Parses a connection definition from the input line and adds it to
+        the Map object.
+
+        Args:
+            line: The input line containing the connection definition
+            line_nb: The line number in the input file
+
+        Raises:
+            ParsingError: If the line does not follow the expected format for
+                connection definitions, if there are duplicate connections, if
+                the connection references undefined zones, or if the
+                max_link_capacity value is invalid.
+        """
         if not line.startswith("connection:") or '-' not in line:
             raise ParsingError(
                 line_nb,
@@ -231,6 +299,15 @@ class Map:
             line_nb: int,
             md_keys: set[str]
             ) -> dict[str, Any]:
+        """Parses a metadata string from the input line and returns a
+        dictionary of key-value pairs.
+
+        Args:
+            raw_md: The raw metadata string (including brackets) to be parsed
+            line_nb: The line number in the input file
+            md_keys: A set of expected metadata keys that can be used in the
+                metadata
+        """
         raw_md = raw_md.strip()
 
         if not raw_md.startswith('[') or not raw_md.endswith(']'):
@@ -277,6 +354,16 @@ class Map:
         return metadata
 
     def get_map_bounds(self) -> tuple[int, int, int, int]:
+        """Returns the minimum and maximum x and y coordinates of the zones
+        defined in the Map object.
+
+        Returns:
+            A tuple containing the minimum x, maximum x, minimum y, and maximum
+            y coordinates of the zones
+
+        Raises:
+            ValueError: If there are no zones defined in the Map object
+        """
         if not self.zones:
             raise ValueError("No zones defined")
 
