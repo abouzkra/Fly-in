@@ -14,7 +14,6 @@ debug:
 	poetry run python3 -m pdb main.py $(MAP)
 
 clean:
-	rm poetry.lock
 	rm -rf $$(find . -name "__pycache__" -o -name ".mypy_cache")
 	@echo "Program cleaned successfully."
 
