@@ -1,21 +1,22 @@
-MAP = maps/easy/02_simple_fork.txt
+MAP = maps/hard/01_maze_nightmare.txt
 
 MYPY_FLAGS = --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 install:
 	@echo "Installing dependencies..."
-	poetry install
+	uv sync
 	@echo "Dependencies installed successfully."
 
 run:
-	poetry run python3 main.py $(MAP)
+	uv run python3 main.py $(MAP)
 
 debug:
-	poetry run python3 -m pdb main.py $(MAP)
+	uv run python3 -m pdb main.py $(MAP)
 
 clean:
 	rm -rf $$(find . -name "__pycache__" -o -name ".mypy_cache")
+	rm uv.lock
 	@echo "Program cleaned successfully."
 
 lint:
-	poetry run flake8 . & poetry run mypy . $(MYPY_FLAGS) 
+	uv run flake8 . & uv run mypy . $(MYPY_FLAGS) 

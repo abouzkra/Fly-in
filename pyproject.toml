@@ -1,21 +1,21 @@
-[tool.poetry]
+[project]
 name = "fly-in"
 version = "1.0.0"
 description = ""
-authors = ["abouzkra"]
+authors = [{name = "abouzkra"}]
 readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+	"mypy>=1.19.1,<2.0.0",
+	"flake8>=7.3.0,<8.0.0",
+	"pydantic>=2.12.5,<3.0.0",
+	"raylib>=5.5.0.4,<6.0.0.0",
+	"webcolors>=25.10.0,<26.0.0",
+]
 
-package-mode = false
-
-[tool.poetry.dependencies]
-python = ">=3.10"
-mypy = ">=1.19.1,<2.0.0"
-flake8 = ">=7.3.0,<8.0.0"
-pydantic = ">=2.12.5,<3.0.0"
-raylib = ">=5.5.0.4,<6.0.0.0"
-webcolors = ">=25.10.0,<26.0.0"
-
+[tool.uv]
+package = false
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

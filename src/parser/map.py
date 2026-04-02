@@ -148,12 +148,6 @@ class Map:
             zone_type = ZoneType(zone_type)
         except ValueError:
             raise ParsingError(line_nb, f"Invalid zone type: '{zone_type}'")
-
-        r = randint(0, 255)
-        g = randint(0, 255)
-        b = randint(0, 255)
-
-        color: int = (r << 24) | (g << 16) | (b << 8) | 255
         try:
             color_name = metadata['color']
             if color_name == 'rainbow':
@@ -164,11 +158,10 @@ class Map:
                     (rgb.red << 24) | (rgb.green << 16) | (rgb.blue << 8) | 255
                     )
         except (ValueError, KeyError):
-            print(
-                "Warning: invalid color name was passed "
-                f"'{metadata.get('color')}'"
-                )
-            print("Falling back to random color: " + hex(color).upper())
+            r = randint(0, 255)
+            g = randint(0, 255)
+            b = randint(0, 255)
+            color: int = (r << 24) | (g << 16) | (b << 8) | 255
 
         try:
             zone = Zone(
@@ -195,6 +188,7 @@ class Map:
                     line_nb,
                     "Found multiple start_hub definitions"
                     )
+            zone.zone_type = ZoneType.NORMAL
             zone.max_drones = self.nb_drones
             self.start_zone = name
 
@@ -204,6 +198,7 @@ class Map:
                     line_nb,
                     "Found multiple end_hub definitions"
                     )
+            zone.zone_type = ZoneType.NORMAL
             zone.max_drones = self.nb_drones
             self.end_zone = name
 
@@ -308,15 +303,7 @@ class Map:
             md_keys: A set of expected metadata keys that can be used in the
                 metadata
         """
-        raw_md = raw_md.strip()
-
-        if not raw_md.startswith('[') or not raw_md.endswith(']'):
-            raise ParsingError(
-                line_nb,
-                "Invalid metadata syntax (missing brackets)"
-                )
-
-        raw_md = raw_md[1: -1]
+        raw_md = raw_md.strip()[1: -1]
 
         if not raw_md:
             return {}

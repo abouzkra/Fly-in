@@ -230,11 +230,11 @@ class MapRenderer:
                     )
             else:
                 draw_circle(
-                        zone_layout.center_x,
-                        zone_layout.center_y,
-                        zone_layout.radius,
-                        get_color(zone_layout.color)
-                        )
+                    zone_layout.center_x,
+                    zone_layout.center_y,
+                    zone_layout.radius,
+                    get_color(zone_layout.color)
+                    )
 
         for drone in self.drones.values():
             text = str(drone.id)
@@ -274,7 +274,7 @@ class MapRenderer:
                  measure_text(text, font_size)) // 2),
             int(panel.turn_info.y + (panel.turn_info.height - font_size) // 2),
             font_size,
-            BLACK
+            Color(0, 0, 0, 191)
             )
 
         btn_labels = {

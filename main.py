@@ -1,6 +1,6 @@
 import sys
 import os
-from raylib.colors import RAYWHITE
+from raylib.colors import LIGHTGRAY
 from pyray import (
     begin_drawing, clear_background, close_window, end_drawing,
     gui_set_style, init_window, is_texture_valid, load_texture, set_target_fps,
@@ -10,7 +10,7 @@ from raylib import DEFAULT, LOG_NONE, TEXT_SIZE
 from src import Map, MapLayout, ParsingError, MapRenderer, Solver
 
 
-DRONE_TEXTURE_PATH = "./images/drone-s.png"
+DRONE_TEXTURE_PATH = "./images/drone-m.png"
 
 
 def launch_visualizer(
@@ -37,7 +37,7 @@ def launch_visualizer(
     set_target_fps(60)
     while not window_should_close():
         begin_drawing()
-        clear_background(RAYWHITE)
+        clear_background(LIGHTGRAY)
 
         renderer.handle_click()
         renderer.draw_map()
