@@ -2,22 +2,37 @@ import sys
 import os
 from raylib.colors import LIGHTGRAY
 from pyray import (
-    begin_drawing, clear_background, close_window, end_drawing,
-    gui_set_style, init_window, is_texture_valid, load_texture, set_target_fps,
-    set_trace_log_level, unload_texture, window_should_close
+    Texture, begin_drawing, clear_background, end_drawing, get_monitor_height,
+    get_monitor_width, gui_set_style, init_window, is_texture_valid,
+    load_texture, set_target_fps, set_trace_log_level, unload_texture,
+    window_should_close, close_window
     )
 from raylib import DEFAULT, LOG_NONE, TEXT_SIZE
-from src import Map, MapLayout, ParsingError, MapRenderer, Solver
+from Map import Map
+from error import ParsingError
+from renderer import MapRenderer
+from layout import MapLayout
+from solver import Solver
 
 
-DRONE_TEXTURE_PATH = "./images/drone-m.png"
+DRONE_TEXTURE_PATH = "./images/drone.png"
+
+
+def print_output(solver: Solver) -> None:
+    """Provides simulation output in case of a program failure.
+
+    Args:
+        solver (Solver): The solver instance which contains turns.
+    """
+    for i in range(len(solver.turns)):
+        print(solver.format_turn(i))
 
 
 def launch_visualizer(
         win_w: int,
         win_h: int,
         map_layout: MapLayout,
-        turns: list[list[tuple[int, str]]]
+        solver: Solver
         ) -> None:
     """Launches the visualiser.
 
@@ -25,14 +40,20 @@ def launch_visualizer(
         win_w (int): Window width.
         win_h (int): Window height.
         map_layout (MapLayout): Precomputed layout of the map and panel.
-        turns (list[list[tuple[int, str]]]): List of turns to simulate.
+        solver (Solver): The solver instance which contains turns.
     """
     init_window(win_w, win_h, "Fly-in")
+    if win_w > get_monitor_width(0) or win_h > get_monitor_height(0):
+        close_window()
+        print("Visualiser Error: window dimensions are too big for screen")
+        print("============== Providing simulation output ==============")
+        print_output(solver)
+        sys.exit(0)
+
     gui_set_style(DEFAULT, TEXT_SIZE, 20)
 
     drone_texture = load_texture(DRONE_TEXTURE_PATH)
-    renderer = MapRenderer(map_layout, drone_texture)
-    renderer.load_turns(turns)
+    renderer = MapRenderer(map_layout, drone_texture, solver)
 
     set_target_fps(60)
     while not window_should_close():
@@ -83,15 +104,14 @@ def main() -> None:
         sys.exit(1)
 
     file = sys.argv[1]
-    if not os.path.isfile(file):
-        print(f"Error: map file not found '{file}'")
-        sys.exit(1)
 
-    m = Map()
     try:
+        m = Map()
         m.parse_file(file)
-    except ParsingError as e:
-        print(e)
+    except (
+            FileNotFoundError, PermissionError, IsADirectoryError,
+            ParsingError) as e:
+        print(f"Error: {e}")
         sys.exit(1)
 
     set_trace_log_level(LOG_NONE)
@@ -101,8 +121,8 @@ def main() -> None:
         sys.exit(1)
 
     init_window(1, 1, "loading")
-    texture = load_texture(DRONE_TEXTURE_PATH)
 
+    texture: Texture = load_texture(DRONE_TEXTURE_PATH)
     if not is_texture_valid(texture):
         close_window()
         print(f"Error: failed to load drone texture '{DRONE_TEXTURE_PATH}'")
@@ -122,7 +142,7 @@ def main() -> None:
     map_layout, win_w, win_h = build_layout(m, tex_width)
 
     try:
-        launch_visualizer(win_w, win_h, map_layout, s.turns)
+        launch_visualizer(win_w, win_h, map_layout, s)
     except Exception as e:
         print(f"Visualiser Error: {e}")
         sys.exit(1)

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from math import ceil, sqrt
 from pyray import Rectangle
-from ..parser.map import Map
+from Map import Map
 
 
 class LayoutConfig:
@@ -202,6 +202,11 @@ class MapLayout:
             self.connections_layouts[(name1, name2)] = ConnectionLayout(
                     int(start_x), int(start_y),
                     int(end_x), int(end_y)
+                    )
+
+            self.connections_layouts[(name2, name1)] = ConnectionLayout(
+                    int(end_x), int(end_y),
+                    int(start_x), int(start_y)
                     )
 
     def _init_panel_layout(self) -> None:

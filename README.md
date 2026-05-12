@@ -2,18 +2,18 @@
 
 # Description
 **Fly-in** is a drone fleet routing simulation written in Python. The goal is to move all drones from a central start hub to a target end hub across a network of connected zones, in the fewest possible simulation turns.
-The program reads a custom map file that defines zones, connections, capacities and zone types, then computes an optimal routing plan and visualises the simulation in real time using **Raylib**.
+The program reads a custom map file that defines zones, connections, capacities and zone types, then computes a routing plan and visualises the simulation using **Raylib**.
 The project is split into four independent layers:
 
-- **Parser** — reads the map file format and builds an in-memory model, enforcing all syntactic and semantic constraints.
+- **Parsing** — reads the map file format and builds an in-memory model, enforcing all syntactic and semantic constraints.
 - **Graph** — constructs a directed weighted graph from the parsed map, encoding zone types as movement costs and link capacities as edge weights.
-- **Solver** — finds all simple paths via BFS, assigns drones to paths using a capacity-aware greedy algorithm, then builds a turn-by-turn schedule that respects every occupancy, capacity and zone-type constraint.
+- **Solving** — finds all simple paths via BFS, assigns drones to paths using a capacity-aware greedy algorithm, then builds a turn-by-turn schedule that respects every occupancy, capacity and zone-type constraint.
 - **Visualiser** — renders the map, animates drone movements along connection lines, and exposes playback controls through an interactive panel.
 
 # Instructions
 ### Requirements
 - Python 3.10 or later
-- poetry tool for dependency management
+- uv tool for dependency management
 
 ### Installation
 Install dependencies using poetry:
@@ -26,7 +26,7 @@ Runs the main program which parses, validates, solves and provides a visual simu
 ```bash
 make run MAP=<path-to-map>
 # or directly
-poetry run python3 main.py <path-to-map>
+uv run python3 main.py <path-to-map>
 ```
 
 ### Check source file linting
@@ -47,11 +47,19 @@ Removes virtual environment .venv and temporary files or caches (e.g., pycache, 
 make clean
 ```
 
+# Resources
+- [Graph data structure](https://www.geeksforgeeks.org/dsa/graph-data-structure/)
+- [Flow Network](https://brilliant.org/wiki/flow-network/)
+- [Breadth first search](https://en.wikipedia.org/wiki/Breadth-first_search)
+- [Maximum flow problems](https://en.wikipedia.org/wiki/Maximum_flow_problem)
+- [Raylib](https://www.raylib.com/)
+
+
 ### AI Usage
 AI was used as a development assistant throughout the project. The following tasks involved AI-generated or AI-assisted content, all of which was reviewed, understood and adapted before integration:
 - **Separation of concerns**: Discussed the best way to split the project's layers: Parsing, Graph, Solver and Visualization layers.
-- **Solver architecture**: Discussed the BFS algorithm for multi-path finding, and the two-phase turn scheduler design (leaving/arriving flow counters, restricted-zone wait mechanic). All logic was reviewed and the edge cases were worked through manually before implementation.
-- **Parser improvements**: Parsing enhancements and edge case handling suggestions like adding duplicate metadata key detection, and improving coordinate validation. Each suggestion was evaluated against the spec before being adopted.
+- **Solver architecture**: Discussed the BFS algorithm for multi-path finding, and the two-phase turn scheduler design (leaving/arriving flow counters, restricted-zone wait mechanic). All logic and edge cases were manually reviewed before implementation.
+- **Parser improvements**: Parsing enhancements and edge case handling suggestions like adding duplicate metadata key detection, and improving coordinate validation.
 - **Documentation & Docstrings**: AI was used to draft docstring templates (Google style) which were then revised to accurately reflect the actual implementation.
 
 AI was not used to generate code that was copy-pasted without understanding. In every case the generated output was read, questioned and modified to fit the project's specific requirements.
@@ -95,14 +103,13 @@ path_cost = len(path)
 Paths are computed once and cached inside the solver's instance; the scheduler never re-runs pathfinding.
 
 Longer paths cost more; restricted zones are penalised because they
-impose a mandatory wait turn after arrival; priority zones receive a
+impose a mandatory wait turn before arrival; priority zones receive a
 small bonus to make them preferred over equivalent normal routes.
 
 Only the **two lowest-cost paths** are retained after sorting. Keeping
 more paths does not improve performance on the provided maps because
 additional paths are either longer, capacity-limited, or share the same
-bottleneck zones as the top two. Restricting to two paths also keeps the
-assignment step O(D) where D is the number of drones.
+bottleneck zones as the top two.
 
 ---
 ### III. Drone assignment — greedy with cost bump
@@ -113,57 +120,38 @@ is bumped by `+1.0` before re-sorting:
 
 ```
 for drone 1..N:
-    assign drone to paths[0]          # cheapest path
-    paths[0].cost += 1.0              # raise cost after assignment
+    assign drone to cheapest path
+    raise cheapest path's cost by a bump of 1.0
     re-sort paths by cost
 ```
 
 The `+1.0` bump acts as a soft capacity signal: once a path has
 accumulated enough drones its cost overtakes the alternative, naturally
-spreading the fleet across both routes. The bump is independent of the
-path's actual bottleneck capacity because the top-2 restriction already
-filters out paths that are structurally inferior — the two retained
-paths are assumed to be roughly equivalent candidates and the bump is
-sufficient to balance load between them.
+spreading the fleet across both routes.
 
 ---
 ### IV. Scheduling — turn-by-turn simulation
 
-The scheduler maintains three per-drone counters:
+The scheduler builds a turn-by-turn simulation using the graph's objects to manage the flow.
 
-- `steps[id]` — index into the drone's assigned path (0 = start zone).
-- `waits[id]` — turns remaining before the drone can move again.
-- `delivered` — set of drone IDs that have reached the end zone.
+#### State management:
+- Drone tracking: Maintains `steps` (current drone's position in the assigned path), `waits` (cooldown for restricted zones), and a `delivered` set that tracks the delivered drones.
+- Turn Reset: Every turn begins with `graph.reset()`, clearing the leaving, arriving and used counters on all nodes and edges.
+- Turn Commit: After all possible moves are processed, `graph.commit_turn()` updates the permanent `drones_count` for each node based on that turn's flow.
 
-Each turn, per-turn flow counters are reset:
+#### Movement Constraints:
+For each drone, a move is only valid if:
+1. **Not waiting**: The drone is currently waiting on a connection towards a restricted zone.
+2. **Link available**: The used edge hasn't reached its max capacity.
+3. **Zone capacity**: The destination node has space, calculated as:
+    $$
+    max\_drones - (current + arriving - leaving) > 0
+    $$
 
-- `leaving[zone]` — drones departing a zone this turn.
-- `arriving[zone]` — drones arriving at a zone this turn.
-- `link_used[(src, dst)]` — traversals committed on a link this turn.
+#### Restricted zones:
+Upon enterin a restricted zone, `waits` is set to 1 for the arriving drone. This forces it to skip its next movement phase, making the transition cost 2 turns.
 
-For each active drone the scheduler checks in order:
-
-1. **Already delivered or at end zone** → mark delivered, skip.
-2. **Waiting** (`waits > 0`) → decrement counter, skip.
-3. **Link saturated** → `link_used[(src, dst)] >= max_link_capacity` → wait.
-4. **Destination at capacity** → `max_drones − (present − leaving + arriving) ≤ 0` → wait.
-
-If all checks pass the move is committed: counters are updated and
-`(drone_id, destination)` is appended to the current turn's move list.
-
-Departures free their slot **within the same turn**: the capacity check
-subtracts `leaving[dst]` before comparing against `max_drones`, so a
-drone moving out of a zone creates a slot that an incoming drone can use
-in the same turn.
-
-**Restricted zones** set `waits[id] = 1` on arrival. The drone skips
-its next turn entirely before it can move again, giving a total
-movement cost of 2 turns (1 to arrive + 1 mandatory rest), matching the
-spec.
-
-Zone occupancy counts are updated at the end of every turn by applying
-the `arriving` and `leaving` deltas. The simulation terminates when the
-`delivered` set equals the full drone set.
+**Note**: By substracting `leaving` drones from the net drone count, the scheduler allows a drone to enter a full zone in the same turn another one leaves it.
 
 # Visualization Specifications
 ## Visual Representation
@@ -216,11 +204,3 @@ The next turn is dispatched only when **all drones are idle** (`is_moving == Fal
 | Play / Pause | Toggles continuous automatic playback |
 | Next | Pauses and advances exactly one turn |
 | Restart | Resets all drones to the start zone and replays from turn 0 |
-
-
-# Resources
-- [Graph data structure](https://www.geeksforgeeks.org/dsa/graph-data-structure/)
-- [Flow Network](https://brilliant.org/wiki/flow-network/)
-- [Breadth first search](https://en.wikipedia.org/wiki/Breadth-first_search)
-- [Maximum flow problems](https://en.wikipedia.org/wiki/Maximum_flow_problem)
-- [Raylib](https://www.raylib.com/)

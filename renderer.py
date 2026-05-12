@@ -4,8 +4,8 @@ from pyray import (
         draw_circle, draw_line_ex, draw_text, draw_texture, get_color,
         get_frame_time, measure_text, gui_button
         )
-from ..solver.solver import Solver
-from .layout import ConnectionLayout, MapLayout
+from solver import Solver
+from layout import ConnectionLayout, MapLayout
 
 
 class RenderDrone:
@@ -54,12 +54,60 @@ class RenderDrone:
         self.y: float = float(y)
 
         self.is_moving: bool = False
+        self.is_transit: bool = False
         self.phase: int = 0
 
         self.start_x: float = 0.0
         self.start_y: float = 0.0
         self.end_x: float = 0.0
         self.end_y: float = 0.0
+
+    def start_transit(
+            self,
+            connection: ConnectionLayout,
+            tex_half_w: int,
+            tex_half_h: int
+            ) -> None:
+        """Animate the drone from its current slot to the midpoint of the
+        connection, then stop there. Called when a restricted transit begins.
+
+        Two phases:
+            0: current slot -> connection start point
+            1: connection start -> connection midpoint  (stop here)
+        """
+        self.connection = connection
+        self.phase = 0
+        self.is_moving = True
+
+        self.start_x = self.x
+        self.start_y = self.y
+        self.end_x = connection.start_x - tex_half_w
+        self.end_y = connection.start_y - tex_half_h
+
+    def start_arrival(
+            self,
+            connection: ConnectionLayout,
+            target_slot: tuple[int, int],
+            tex_half_w: int,
+            tex_half_h: int
+            ) -> None:
+        """Animate the drone from the connection midpoint to the destination
+        slot. Called the turn after start_transit, when the drone must arrive.
+
+        Two phases:
+            0: connection midpoint -> connection end point
+            1: connection end -> target slot
+        """
+        self.connection = connection
+        self.target_slot = target_slot
+        self.phase = 3
+        self.is_moving = True
+        self.is_transit = False
+
+        self.start_x = self.x
+        self.start_y = self.y
+        self.end_x = connection.end_x - tex_half_w
+        self.end_y = connection.end_y - tex_half_h
 
     def start_move(
             self,
@@ -82,13 +130,11 @@ class RenderDrone:
         """
         self.connection = connection
         self.target_slot = target_slot
-
         self.phase = 0
         self.is_moving = True
 
         self.start_x = self.x
         self.start_y = self.y
-
         self.end_x = connection.start_x - tex_half_w
         self.end_y = connection.start_y - tex_half_h
 
@@ -102,22 +148,45 @@ class RenderDrone:
             tex_half_h (int): Half the height of the drone texture, used for
                 centering the drone during movement.
         """
+
         if not self.is_moving or not self._move():
             return
+
+        mid_x = (self.connection.start_x + self.connection.end_x) // 2
+        mid_y = (self.connection.start_y + self.connection.end_y) // 2
 
         if self.phase == 0:
             self.phase = 1
             self.start_x = self.x
             self.start_y = self.y
-            self.end_x = self.connection.end_x - tex_half_w
-            self.end_y = self.connection.end_y - tex_half_h
+            if self.is_transit:
+                self.end_x = mid_x - tex_half_w
+                self.end_y = mid_y - tex_half_h
+            else:
+                self.end_x = self.connection.end_x - tex_half_w
+                self.end_y = self.connection.end_y - tex_half_h
+
         elif self.phase == 1:
-            self.phase = 2
+            if self.is_transit:
+                self.is_moving = False
+            else:
+                self.phase = 2
+                self.start_x = self.x
+                self.start_y = self.y
+                self.end_x, self.end_y = self.target_slot
+
+        elif self.phase == 2:
+            self.phase = 3
+            self.is_moving = False
+
+        elif self.phase == 3:
+            self.phase = 4
             self.start_x = self.x
             self.start_y = self.y
             self.end_x, self.end_y = self.target_slot
-        elif self.phase == 2:
-            self.phase = 3
+
+        elif self.phase == 4:
+            self.phase = 5
             self.is_moving = False
 
     def _move(self) -> bool:
@@ -138,7 +207,6 @@ class RenderDrone:
         dist = sqrt(dist)
         norm_dx = dx / dist
         norm_dy = dy / dist
-
         self.x += norm_dx * step
         self.y += norm_dy * step
 
@@ -153,6 +221,7 @@ class MapRenderer:
     Attributes:
         layout (MapLayout): The layout of the map, including zones and
             connections.
+        solver (Solver): The solver instance which contains turns.
         drone_texture (Texture): The texture used to represent drones on the
             map.
         tex_half_w (int): Half the width of the drone texture, used for
@@ -172,24 +241,26 @@ class MapRenderer:
         buttons (dict[str, int]): A dictionary mapping button labels to their
             corresponding GUI elements.
     """
-    def __init__(self, layout: MapLayout, drone_texture: Texture):
+    def __init__(self, layout: MapLayout, drone_texture: Texture,
+                 solver: Solver):
         """Initializes the MapRenderer with the given map layout and drone
         texture.
 
         Args:
             layout (MapLayout): The layout of the map, including zones and
                 connections.
+            solver (Solver): The solver instance which contains turns.
             drone_texture (Texture): The texture used to represent drones on
                 the map.
         """
         self.layout: MapLayout = layout
+        self.solver: Solver = solver
         self.drone_texture: Texture = drone_texture
         self.tex_half_w: int = drone_texture.width // 2
         self.tex_half_h: int = drone_texture.height // 2
 
         self.drones: dict[int, RenderDrone] = {}
 
-        self.turns: list[list[tuple[int, str]]] = []
         self.current_turn: int = 0
         self.playing: bool = False
 
@@ -197,16 +268,6 @@ class MapRenderer:
         self._spawn_drones()
 
         self.buttons: dict[str, int] = {}
-
-    def load_turns(self, turns: list[list[tuple[int, str]]]) -> None:
-        """Loads the turns to be displayed in the animation.
-
-        Args:
-            turns (list[list[tuple[int, str]]]): A list of turns, where each
-                turn is a list of tuples containing drone ID and the next zone
-                it will move to.
-        """
-        self.turns = turns
 
     def draw_map(self) -> None:
         """Draws the map layout, including connections, zones, and drones, and
@@ -264,7 +325,7 @@ class MapRenderer:
         displayed_turns = 0
         if self.playing or self.current_turn > 0:
             displayed_turns = max(0, self.current_turn)
-        text = f"Turn {displayed_turns} / {len(self.turns)}"
+        text = f"Turn {displayed_turns} / {len(self.solver.turns)}"
         font_size = 20
 
         draw_text(
@@ -297,7 +358,7 @@ class MapRenderer:
         r = radius
         for c in gradients:
             draw_circle(x, y, r, c)
-            r -= radius / 6
+            r -= radius / 7
 
     def handle_click(self) -> None:
         """Handles click events on the control panel."""
@@ -309,14 +370,17 @@ class MapRenderer:
             return
 
         if self.buttons['play_pause']:
-            if not self.playing and self.current_turn >= len(self.turns):
+            if (
+                not self.playing
+                and self.current_turn >= len(self.solver.turns)
+            ):
                 return
             self.playing = not self.playing
         if self.buttons['step']:
             self.playing = False
             all_idle = all(not d.is_moving for d in self.drones.values())
 
-            if all_idle and self.current_turn < len(self.turns):
+            if all_idle and self.current_turn < len(self.solver.turns):
                 self._start_turn(self.current_turn)
                 self.current_turn += 1
         if self.buttons['restart']:
@@ -357,58 +421,87 @@ class MapRenderer:
 
         turn_anim_ended = all(not d.is_moving for d in self.drones.values())
         if self.playing and turn_anim_ended:
-            if self.current_turn < len(self.turns):
+            if self.current_turn < len(self.solver.turns):
                 self._start_turn(self.current_turn)
                 self.current_turn += 1
             else:
                 self.playing = False
 
     def _start_turn(self, turn_idx: int) -> None:
-        """Starts the animation for a specific turn by initiating the movement
-        of the drones according to the turn's instructions, and prints the
-        turn information to the console."""
-        print(Solver.format_turn(self.turns[turn_idx]))
-
-        for drone_id, next_zone in self.turns[turn_idx]:
+        for drone_id, label in self.solver.turns[turn_idx]:
             drone = self.drones[drone_id]
             if drone.is_moving:
                 continue
 
-            connection = (
-                self.layout.connections_layouts.get(
+            is_transit_move = "-" in label
+
+            if is_transit_move:
+                src, dst = label.split("-", 1)
+                connection = self.layout.connections_layouts.get((src, dst))
+                assert connection is not None
+
+                target_layout = self.layout.zone_layouts[dst]
+                free_slot = next(
+                    (s for s, occ in target_layout.drone_coords.items()
+                     if not occ),
+                    None
+                )
+                if not free_slot:
+                    continue
+
+                target_layout.drone_coords[free_slot] = True
+                self.layout.zone_layouts[drone.from_zone].drone_coords[
+                    drone.current_slot] = False
+
+                drone.is_transit = True
+                drone.target_slot = free_slot
+                drone.current_slot = free_slot
+                drone.start_transit(connection, self.tex_half_w,
+                                    self.tex_half_h)
+            elif drone.is_transit:
+                next_zone = label
+                connection = self.layout.connections_layouts.get(
                     (drone.from_zone, next_zone)
-                ) or self.layout.connections_layouts.get(
-                    (next_zone, drone.from_zone)
                 )
-            )
+                assert connection is not None
 
-            assert connection is not None
-
-            target_layout = self.layout.zone_layouts[next_zone]
-            free_slot = None
-
-            for slot, occupied in target_layout.drone_coords.items():
-                if not occupied:
-                    free_slot = slot
-                    break
-
-            if not free_slot:
-                continue
-
-            target_layout.drone_coords[free_slot] = True
-            self.layout.zone_layouts[drone.from_zone].drone_coords[
-                drone.current_slot
-                ] = False
-
-            drone.start_move(
-                connection,
-                free_slot,
-                self.tex_half_w,
-                self.tex_half_h
+                drone.from_zone = next_zone
+                drone.start_arrival(
+                    connection,
+                    drone.target_slot,
+                    self.tex_half_w,
+                    self.tex_half_h
                 )
+            else:
+                next_zone = label
+                connection = self.layout.connections_layouts.get(
+                    (drone.from_zone, next_zone)
+                )
+                assert connection is not None
 
-            drone.from_zone = next_zone
-            drone.current_slot = free_slot
+                target_layout = self.layout.zone_layouts[next_zone]
+                free_slot = next(
+                    (s for s, occ in target_layout.drone_coords.items()
+                     if not occ),
+                    None
+                )
+                if not free_slot:
+                    continue
+
+                target_layout.drone_coords[free_slot] = True
+                self.layout.zone_layouts[drone.from_zone].drone_coords[
+                    drone.current_slot] = False
+
+                drone.start_move(
+                    connection,
+                    free_slot,
+                    self.tex_half_w,
+                    self.tex_half_h
+                )
+                drone.from_zone = next_zone
+                drone.current_slot = free_slot
+
+        print(self.solver.format_turn(turn_idx))
 
     def _restart(self) -> None:
         """Resets the map to its initial state by resetting the drone

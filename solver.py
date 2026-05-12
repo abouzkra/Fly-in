@@ -1,6 +1,6 @@
-from ..parser.map import Map
-from ..parser.zone import ZoneType
-from .graph import Graph
+from Map import Map
+from zone import ZoneType
+from graph import Graph
 
 
 Path = list[str]
@@ -129,12 +129,10 @@ class Solver:
 
     def _schedule_drones(self) -> None:
         """Schedules drone movements turn by turn, ensuring that zone and link
-        capacities are respected. Drones move along their assigned paths, and
-        the solver checks for conflicts at each turn, such as multiple drones
-        trying to enter the same zone or use the same link. If a conflict is
-        detected, the drone will wait until the next turn to attempt the move
-        again. The results are stored in the `turns` attribute, which contains
-        the sequence of drone movements for each turn."""
+        capacities are respected, drones move along their assigned paths, and
+        the solver checks for conflicts at each turn. If a conflict is
+        is detected, the drone will wait until permitted to move.
+        """
         if not self.paths or not self.drone_assignments:
             return
 
@@ -142,57 +140,11 @@ class Solver:
         steps: dict[int, int] = {d_id: 0 for d_id in range(1, nb_drones + 1)}
         waits: dict[int, int] = {d_id: 0 for d_id in range(1, nb_drones + 1)}
         delivered: set[int] = set()
-
-        zone_count: dict[str, int] = {name: 0 for name in self.map.zones}
-        zone_count[self.map.start_zone] = nb_drones
-
         delivered_res = set(range(1, nb_drones + 1))
+
         while delivered != delivered_res:
             turn_moves: list[tuple[int, str]] = []
-
-            leaving: dict[str, int] = {name: 0 for name in self.map.zones}
-            arriving: dict[str, int] = {name: 0 for name in self.map.zones}
-            link_used: dict[tuple[str, str], int] = {}
-
-            def is_zone_free(name: str) -> int:
-                """Checks whether a zone has free capacity for incoming drones,
-                considering the current number of drones in the zone, the
-                number of drones leaving, and the number of drones arriving.
-
-                Args:
-                    name: The name of the zone to check.
-
-                Returns:
-                    The number of free slots available in the zone for incoming
-                    drones. A value of 0 or less indicates that the zone is at
-                    or over capacity, while a positive value indicates the
-                    number of additional drones that can enter the zone without
-                    exceeding its capacity.
-                """
-                z = self.map.zones[name]
-                net = zone_count[name] - leaving[name]
-                return z.max_drones - net - arriving[name]
-
-            def is_link_free(s: str, d: str) -> bool:
-                """Checks whether a link between two zones has free capacity
-                for drones to use, considering the number of drones currently
-                using the link.
-
-                Args:
-                    s: The source zone of the link.
-                    d: The destination zone of the link.
-
-                Returns:
-                    True if the link has free capacity for another drone to
-                    use, False if the link is at or over capacity.
-                """
-                node = self.graph.nodes.get(s)
-                if not node:
-                    return False
-
-                edge = next((e for e in node.edges if e.to == d), None)
-                cap = edge.capacity if edge else 1
-                return link_used.get((s, d), 0) < cap
+            self.graph.reset()
 
             for drone_id in range(1, nb_drones + 1):
                 if drone_id in delivered:
@@ -201,46 +153,43 @@ class Solver:
                 path = self.drone_assignments[drone_id]
                 step = steps[drone_id]
 
-                if step == len(path) - 1:
-                    delivered.add(drone_id)
-                    continue
+                src_node = self.graph.nodes[path[step]]
+                dst_node = self.graph.nodes[path[step + 1]]
+                dst_zone = self.map.zones[path[step + 1]]
+
                 if waits[drone_id] > 0:
                     waits[drone_id] -= 1
+                    turn_moves.append((drone_id, src_node.name))
                     continue
 
-                src = path[step]
-                dst = path[step + 1]
-                dst_zone = self.map.zones[dst]
-
-                if not is_link_free(src, dst):
+                edge = src_node.get_edge(dst_node.name)
+                is_end = dst_node.name == self.map.end_zone
+                if (
+                    (not is_end and dst_node.free_capacity() <= 0)
+                    or (edge is None or not edge.is_free())
+                ):
                     continue
 
-                is_end = dst == self.map.end_zone
-                if not is_end and is_zone_free(dst) <= 0:
-                    continue
-
-                leaving[src] += 1
+                src_node.leaving += 1
                 if not is_end:
-                    arriving[dst] += 1
-                link_used[(src, dst)] = link_used.get((src, dst), 0) + 1
-
+                    dst_node.arriving += 1
+                edge.used += 1
                 steps[drone_id] += 1
-                turn_moves.append((drone_id, dst))
-
                 if dst_zone.zone_type == ZoneType.RESTRICTED:
+                    turn_moves.append(
+                        (drone_id, f"{src_node.name}-{dst_node.name}")
+                        )
                     waits[drone_id] = 1
+                else:
+                    turn_moves.append((drone_id, dst_node.name))
 
                 if is_end:
                     delivered.add(drone_id)
 
-            for name in self.map.zones:
-                zone_count[name] += arriving[name] - leaving[name]
+            self.graph.commit_turn()
+            self.turns.append(turn_moves)
 
-            if turn_moves:
-                self.turns.append(turn_moves)
-
-    @staticmethod
-    def format_turn(turn: list[tuple[int, str]]) -> str:
+    def format_turn(self, turn_idx: int) -> str:
         """Stringifies a turn, which is a list of drone movements, into the
         required output format.
 
@@ -248,6 +197,7 @@ class Solver:
             turn: A list of tuples, where each tuple contains a drone ID and
                 the zone it moves to in that turn.
         """
+        turn = self.turns[turn_idx]
         return " ".join(
             f"D{d_id}-{zone_name}" for d_id, zone_name in turn
             )

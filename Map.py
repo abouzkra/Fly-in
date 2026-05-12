@@ -1,8 +1,8 @@
 from typing import Any
 from webcolors import name_to_rgb
 from random import randint
-from .error import ParsingError
-from .zone import Zone, ZoneType, Neighbor
+from error import ParsingError
+from zone import Zone, ZoneType, Neighbor
 
 
 class Map:
@@ -161,7 +161,7 @@ class Map:
             r = randint(0, 255)
             g = randint(0, 255)
             b = randint(0, 255)
-            color: int = (r << 24) | (g << 16) | (b << 8) | 255
+            color = (r << 24) | (g << 16) | (b << 8) | 255
 
         try:
             zone = Zone(
